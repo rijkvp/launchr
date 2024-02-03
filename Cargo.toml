@@ -8,3 +8,8 @@ tiny-skia = "0.11"
 winit = "0.29"
 softbuffer = "0.4"
 cosmic-text = "0.10"
+
+[profile.release]
+strip = "debuginfo"
+lto = true
+codegen-units = 1

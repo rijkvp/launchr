@@ -614,6 +614,7 @@ name = "launcher-rust"
 version = "0.1.0"
 dependencies = [
  "cosmic-text",
+ "once_cell",
  "softbuffer",
  "tiny-skia",
  "winit",

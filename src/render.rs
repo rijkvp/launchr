@@ -43,7 +43,7 @@ impl Renderer {
         let mut pixmap = PixmapMut::from_bytes(surface_buffer_u8, width, height).unwrap();
         pixmap.fill(Color::from_rgba8(0, 0, 0, 0xFF));
 
-        app.text.render(&mut pixmap, width, height);
+        app.editor.render(&mut pixmap, width, height);
 
         surface_buffer.present().unwrap();
     }

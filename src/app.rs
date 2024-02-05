@@ -1,19 +1,20 @@
-use crate::{render::Renderer, text::Text};
+use crate::{editor::Editor, render::Renderer};
+use cosmic_text::Action;
 use std::rc::Rc;
 use winit::{
     event::{ElementState, Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
-    window::WindowBuilder,
+    window::WindowBuilder, keyboard::{KeyCode, PhysicalKey},
 };
 
 pub struct App {
-    pub text: Text,
+    pub editor: Editor,
 }
 
 impl App {
     pub fn new() -> Self {
-        let text = Text::new();
-        Self { text }
+        let editor = Editor::new();
+        Self { editor }
     }
 
     pub fn run(&mut self) {
@@ -30,20 +31,43 @@ impl App {
         event_loop
             .run(move |event, elwt| match event {
                 Event::WindowEvent { event, .. } => match event {
-                    WindowEvent::CloseRequested => {
-                        elwt.exit();
-                    }
+                    WindowEvent::CloseRequested => elwt.exit(),
                     WindowEvent::Resized(_) => {
                         window.request_redraw();
                     }
                     WindowEvent::RedrawRequested => renderer.draw(self),
                     WindowEvent::KeyboardInput { event, .. } => {
                         if event.state == ElementState::Pressed {
-                            if let Some(input_text) = event.text {
-                                self.text.add_text(&input_text);
+                            match event.physical_key {
+                                PhysicalKey::Code(KeyCode::Backspace) => {
+                                    self.editor.perform_action(Action::Backspace);
+                                }
+                                PhysicalKey::Code(KeyCode::Enter) => {
+                                    self.editor.perform_action(Action::Insert('\n'));
+                                }
+                                PhysicalKey::Code(KeyCode::Space) => {
+                                    self.editor.perform_action(Action::Insert(' '));
+                                }
+                                PhysicalKey::Code(KeyCode::ArrowLeft) => {
+                                    self.editor.perform_action(Action::Left);
+                                }
+                                PhysicalKey::Code(KeyCode::ArrowRight) => {
+                                    self.editor.perform_action(Action::Right);
+                                }
+                                PhysicalKey::Code(KeyCode::ArrowUp) => {
+                                    self.editor.perform_action(Action::Up);
+                                }
+                                PhysicalKey::Code(KeyCode::ArrowDown) => {
+                                    self.editor.perform_action(Action::Down);
+                                }
+                                _ => (),
+                            }
+                            if let Some(char) = event.text.and_then(|t| t.chars().next()) {
+                                self.editor.perform_action(Action::Insert(char));
                                 window.request_redraw();
                             }
                         }
+                        window.request_redraw();
                     }
                     _ => (),
                 },

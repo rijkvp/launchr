@@ -1,25 +1,24 @@
-use cosmic_text::{Attrs, Family, FontSystem, Metrics, Shaping, SwashCache};
-use once_cell::sync::Lazy;
-use std::sync::Mutex;
+use crate::text::FONT_SYSTEM;
+use cosmic_text::{Attrs, Buffer, Edit, Family, Metrics, SwashCache};
 use tiny_skia::{Paint, PixmapMut, Rect, Transform};
 
-pub static FONT_SYSTEM: Lazy<Mutex<FontSystem>> = Lazy::new(|| Mutex::new(FontSystem::new()));
-
-pub struct Text {
-    text: String,
-    buffer: cosmic_text::Buffer,
+pub struct Editor {
+    editor: cosmic_text::Editor,
     attrs: cosmic_text::Attrs<'static>,
     swash_cache: cosmic_text::SwashCache,
 }
 
-impl Text {
+impl Editor {
     pub fn new() -> Self {
-        let buffer = cosmic_text::Buffer::new_empty(Metrics::new(64.0, 74.0));
-        let swash_cache = SwashCache::new();
+        let mut editor = cosmic_text::Editor::new(Buffer::new_empty(Metrics::new(64.0, 74.0)));
         let attrs = Attrs::new().family(Family::Monospace);
+        let mut font_system = FONT_SYSTEM.lock().unwrap();
+        editor
+            .buffer_mut()
+            .set_text(&mut font_system, "", attrs, cosmic_text::Shaping::Advanced);
+        let swash_cache = SwashCache::new();
         Self {
-            text: String::new(),
-            buffer,
+            editor,
             attrs,
             swash_cache,
         }
@@ -29,9 +28,10 @@ impl Text {
         let mut paint = Paint::default();
         let transform = Transform::identity();
         let mut font_system = FONT_SYSTEM.lock().unwrap();
-        self.buffer
+        self.editor
+            .buffer_mut()
             .set_size(&mut font_system, width as f32, height as f32);
-        self.buffer.draw(
+        self.editor.draw(
             &mut font_system,
             &mut self.swash_cache,
             cosmic_text::Color::rgb(0xFF, 0xFF, 0xFF),
@@ -47,11 +47,10 @@ impl Text {
         );
     }
 
-    pub fn add_text(&mut self, text: &str) {
-        self.text.push_str(text);
-        println!("{}", self.text);
+    pub fn perform_action(&mut self, action: cosmic_text::Action) {
+        println!("Action: {:?}", action);
         let mut font_system = FONT_SYSTEM.lock().unwrap();
-        self.buffer
-            .set_text(&mut font_system, &self.text, self.attrs, Shaping::Advanced);
+        self.editor.action(&mut font_system, action);
+        self.editor.shape_as_needed(&mut font_system);
     }
 }

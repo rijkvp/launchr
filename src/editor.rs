@@ -1,6 +1,7 @@
 use crate::text::FONT_SYSTEM;
-use cosmic_text::{Attrs, Buffer, Edit, Family, Metrics, SwashCache};
+use cosmic_text::{Action, Attrs, Buffer, Edit, Family, Metrics, SwashCache};
 use tiny_skia::{Paint, PixmapMut, Rect, Transform};
+use winit::keyboard::KeyCode;
 
 pub struct Editor {
     editor: cosmic_text::Editor,
@@ -10,7 +11,7 @@ pub struct Editor {
 
 impl Editor {
     pub fn new() -> Self {
-        let mut editor = cosmic_text::Editor::new(Buffer::new_empty(Metrics::new(64.0, 74.0)));
+        let mut editor = cosmic_text::Editor::new(Buffer::new_empty(Metrics::new(32.0, 32.0)));
         let attrs = Attrs::new().family(Family::Monospace);
         let mut font_system = FONT_SYSTEM.lock().unwrap();
         editor
@@ -22,6 +23,10 @@ impl Editor {
             attrs,
             swash_cache,
         }
+    }
+
+    pub fn text(&self) -> &str {
+        self.editor.buffer().lines[0].text()
     }
 
     pub fn render(&mut self, pixmap: &mut PixmapMut, width: u32, height: u32) {
@@ -45,6 +50,18 @@ impl Editor {
                 );
             },
         );
+    }
+
+    pub fn handle_key(&mut self, key: KeyCode) -> bool {
+        match key {
+            KeyCode::Backspace => self.perform_action(Action::Backspace),
+            KeyCode::ArrowLeft => self.perform_action(Action::Left),
+            KeyCode::ArrowRight => self.perform_action(Action::Right),
+            KeyCode::ArrowUp => self.perform_action(Action::Up),
+            KeyCode::ArrowDown => self.perform_action(Action::Down),
+            _ => return false,
+        }
+        true
     }
 
     pub fn perform_action(&mut self, action: cosmic_text::Action) {

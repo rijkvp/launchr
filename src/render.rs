@@ -44,6 +44,7 @@ impl Renderer {
         pixmap.fill(Color::from_rgba8(0, 0, 0, 0xFF));
 
         app.editor.render(&mut pixmap, width, height);
+        app.text.render(&mut pixmap, width, height);
 
         surface_buffer.present().unwrap();
     }

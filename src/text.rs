@@ -6,7 +6,6 @@ use tiny_skia::{Paint, PixmapMut, Rect, Transform};
 pub static FONT_SYSTEM: Lazy<Mutex<FontSystem>> = Lazy::new(|| Mutex::new(FontSystem::new()));
 
 pub struct Text {
-    text: String,
     buffer: cosmic_text::Buffer,
     attrs: cosmic_text::Attrs<'static>,
     swash_cache: cosmic_text::SwashCache,
@@ -14,11 +13,10 @@ pub struct Text {
 
 impl Text {
     pub fn new() -> Self {
-        let buffer = cosmic_text::Buffer::new_empty(Metrics::new(64.0, 74.0));
+        let buffer = cosmic_text::Buffer::new_empty(Metrics::new(32.0, 32.0));
         let swash_cache = SwashCache::new();
         let attrs = Attrs::new().family(Family::Monospace);
         Self {
-            text: String::new(),
             buffer,
             attrs,
             swash_cache,
@@ -47,11 +45,9 @@ impl Text {
         );
     }
 
-    pub fn add_text(&mut self, text: &str) {
-        self.text.push_str(text);
-        println!("{}", self.text);
+    pub fn set_text(&mut self, text: &str) {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
         self.buffer
-            .set_text(&mut font_system, &self.text, self.attrs, Shaping::Advanced);
+            .set_text(&mut font_system, text, self.attrs, Shaping::Advanced);
     }
 }

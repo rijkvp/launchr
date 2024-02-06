@@ -1,20 +1,26 @@
-use crate::{editor::Editor, render::Renderer};
+use crate::{editor::Editor, mode::FileMode, mode::Mode, render::Renderer, text::Text};
 use cosmic_text::Action;
 use std::rc::Rc;
 use winit::{
     event::{ElementState, Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
-    window::WindowBuilder, keyboard::{KeyCode, PhysicalKey},
+    keyboard::PhysicalKey,
+    window::WindowBuilder,
 };
 
 pub struct App {
     pub editor: Editor,
+    pub file_mode: FileMode,
+    pub text: Text,
 }
 
 impl App {
     pub fn new() -> Self {
-        let editor = Editor::new();
-        Self { editor }
+        Self {
+            editor: Editor::new(),
+            file_mode: FileMode {},
+            text: Text::new(),
+        }
     }
 
     pub fn run(&mut self) {
@@ -37,37 +43,27 @@ impl App {
                     }
                     WindowEvent::RedrawRequested => renderer.draw(self),
                     WindowEvent::KeyboardInput { event, .. } => {
+                        let mut is_dirty = false;
                         if event.state == ElementState::Pressed {
-                            match event.physical_key {
-                                PhysicalKey::Code(KeyCode::Backspace) => {
-                                    self.editor.perform_action(Action::Backspace);
-                                }
-                                PhysicalKey::Code(KeyCode::Enter) => {
-                                    self.editor.perform_action(Action::Insert('\n'));
-                                }
-                                PhysicalKey::Code(KeyCode::Space) => {
-                                    self.editor.perform_action(Action::Insert(' '));
-                                }
-                                PhysicalKey::Code(KeyCode::ArrowLeft) => {
-                                    self.editor.perform_action(Action::Left);
-                                }
-                                PhysicalKey::Code(KeyCode::ArrowRight) => {
-                                    self.editor.perform_action(Action::Right);
-                                }
-                                PhysicalKey::Code(KeyCode::ArrowUp) => {
-                                    self.editor.perform_action(Action::Up);
-                                }
-                                PhysicalKey::Code(KeyCode::ArrowDown) => {
-                                    self.editor.perform_action(Action::Down);
-                                }
-                                _ => (),
+                            if let PhysicalKey::Code(key) = event.physical_key {
+                                is_dirty = self.editor.handle_key(key);
                             }
                             if let Some(char) = event.text.and_then(|t| t.chars().next()) {
                                 self.editor.perform_action(Action::Insert(char));
-                                window.request_redraw();
+                                is_dirty = true;
                             }
                         }
-                        window.request_redraw();
+                        if is_dirty {
+                            let matches: Vec<String> = self
+                                .file_mode
+                                .run(self.editor.text())
+                                .into_iter()
+                                .take(10)
+                                .collect();
+                            println!("matches: {:?}", matches);
+                            self.text.set_text(matches.join("\n").as_str());
+                            window.request_redraw();
+                        }
                     }
                     _ => (),
                 },

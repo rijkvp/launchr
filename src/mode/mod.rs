@@ -13,20 +13,22 @@ impl Mode for FileMode {
 
     fn run(&mut self, input: &str) -> Vec<String> {
         let home_dir = dirs::home_dir().unwrap();
-        let mut results = Vec::new();
-        for result in Walk::new(home_dir) {
-            if let Ok(entry) = result {
+        Walk::new(home_dir)
+            .filter_map(Result::ok)
+            .filter_map(|entry| {
                 let path = entry.path();
                 if !path.is_file() {
-                    continue;
+                    return None;
                 }
-                if let Some(name) = path.file_name().and_then(|name| name.to_str()) {
+                let name = path.file_name().and_then(|name| name.to_str());
+                if let Some(name) = name {
                     if name.contains(input) {
-                        results.push(path.display().to_string());
+                        return Some(path.display().to_string());
                     }
                 }
-            }
-        }
-        results
+                None
+            })
+            .take(10)
+            .collect()
     }
 }

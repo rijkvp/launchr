@@ -1,12 +1,11 @@
-use crate::text::FONT_SYSTEM;
-use cosmic_text::{Action, Attrs, Buffer, Edit, Family, Metrics, SwashCache};
+use crate::text::{FONT_SYSTEM, SWASH_CACHE};
+use cosmic_text::{Action, Attrs, Buffer, Edit, Family, Metrics, Shaping};
 use tiny_skia::{Paint, PixmapMut, Rect, Transform};
 use winit::keyboard::KeyCode;
 
 pub struct Editor {
     editor: cosmic_text::Editor,
     attrs: cosmic_text::Attrs<'static>,
-    swash_cache: cosmic_text::SwashCache,
 }
 
 impl Editor {
@@ -16,13 +15,8 @@ impl Editor {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
         editor
             .buffer_mut()
-            .set_text(&mut font_system, "", attrs, cosmic_text::Shaping::Advanced);
-        let swash_cache = SwashCache::new();
-        Self {
-            editor,
-            attrs,
-            swash_cache,
-        }
+            .set_text(&mut font_system, "", attrs, Shaping::Basic);
+        Self { editor, attrs }
     }
 
     pub fn text(&self) -> &str {
@@ -33,12 +27,13 @@ impl Editor {
         let mut paint = Paint::default();
         let transform = Transform::identity();
         let mut font_system = FONT_SYSTEM.lock().unwrap();
+        let mut swash_cache = SWASH_CACHE.lock().unwrap();
         self.editor
             .buffer_mut()
             .set_size(&mut font_system, width as f32, height as f32);
         self.editor.draw(
             &mut font_system,
-            &mut self.swash_cache,
+            &mut swash_cache,
             cosmic_text::Color::rgb(0xFF, 0xFF, 0xFF),
             |x, y, w, h, color| {
                 paint.set_color_rgba8(color.r(), color.g(), color.b(), color.a());

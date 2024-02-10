@@ -5,6 +5,7 @@ use cosmic_text::{
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
 use tiny_skia::{Color, PixmapMut};
+use tracing::info;
 use winit::keyboard::KeyCode;
 
 static FONT_SYSTEM: Lazy<Mutex<FontSystem>> = Lazy::new(|| Mutex::new(FontSystem::new()));
@@ -126,7 +127,7 @@ impl Editor {
     }
 
     pub fn perform_action(&mut self, action: cosmic_text::Action) {
-        println!("Action: {:?}", action);
+        info!("Action: {:?}", action);
         let mut font_system = FONT_SYSTEM.lock().unwrap();
         self.editor.action(&mut font_system, action);
     }

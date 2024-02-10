@@ -60,7 +60,7 @@ impl App {
                                 &self
                                     .matches
                                     .iter()
-                                    .map(|i| i.text())
+                                    .map(|i| i.display())
                                     .collect::<Vec<String>>()
                                     .join("\n"),
                             );

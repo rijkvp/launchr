@@ -9,6 +9,20 @@ pub enum Item {
 }
 
 impl Item {
+    pub fn display(&self) -> String {
+        match self {
+            Item::File(path) => {
+                format!(
+                    "[{}] {}",
+                    if path.is_dir() { "DIR " } else { "FILE" },
+                    path.file_name().unwrap().to_string_lossy()
+                )
+            }
+            Item::Command(cmd) => cmd.to_string(),
+            Item::Selection(s) => s.to_string(),
+        }
+    }
+
     pub fn text(&self) -> String {
         match self {
             Item::File(path) => path.file_name().unwrap().to_string_lossy().to_string(),

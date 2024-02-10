@@ -2,7 +2,7 @@ use crate::{
     mode::Mode,
     mode::RunMode,
     render::Renderer,
-    text::{Editor, Text},
+    text::{Editor, Rect, Text},
 };
 use cosmic_text::Action;
 use crossbeam_channel::Sender;
@@ -27,14 +27,16 @@ pub struct App {
 
 impl App {
     pub fn new() -> Self {
+        info!("Creating app");
         Self {
-            editor: Editor::new(),
-            text: Text::new(),
+            editor: Editor::new(Rect::new(8, 8, 800, 56), 20.0),
+            text: Text::new(Rect::new(8, 64, 800, 600), 20.0),
             matches: Vec::new(),
         }
     }
 
     pub fn run(&mut self) {
+        info!("Starting app");
         let event_loop = EventLoop::new().unwrap();
         event_loop.set_control_flow(ControlFlow::Wait);
         let window = Arc::new(

@@ -1,4 +1,9 @@
-use crate::{editor::Editor, mode::FileMode, mode::Mode, render::Renderer, text::Text};
+use crate::{
+    mode::FileMode,
+    mode::Mode,
+    render::Renderer,
+    text::{Editor, Text},
+};
 use cosmic_text::Action;
 use std::{
     sync::{
@@ -82,7 +87,7 @@ impl App {
                             }
                         }
                         if is_dirty {
-                            input_tx.send(self.editor.text().to_string()).unwrap();
+                            input_tx.send(self.editor.text()).unwrap();
                             window.request_redraw();
                         }
                     }

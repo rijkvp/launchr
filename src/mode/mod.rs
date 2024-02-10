@@ -1,36 +1,82 @@
-use std::{env, path::PathBuf};
-
 use ignore::Walk;
+use std::{env, path::PathBuf, process::Command};
+
+#[derive(Debug, Clone)]
+pub enum Item {
+    File(PathBuf),
+    Command(String),
+    Selection(String),
+}
+
+impl Item {
+    pub fn text(&self) -> String {
+        match self {
+            Item::File(path) => path.file_name().unwrap().to_string_lossy().to_string(),
+            Item::Command(cmd) => cmd.to_string(),
+            Item::Selection(s) => s.to_string(),
+        }
+    }
+
+    pub fn exec(&self) {
+        match self {
+            Item::File(path) => {
+                // Open the file using default software
+                if let Err(e) = open::that(&path) {
+                    eprintln!("Failed to open {}: {}", path.display(), e);
+                }
+            }
+            Item::Command(cmd) => {
+                // Run the command
+                if let Err(e) = Command::new(&cmd).spawn() {
+                    eprintln!("Failed to run {}: {}", cmd, e);
+                }
+            }
+            Item::Selection(_) => {
+                // Print the selection
+                println!("{}", self.text());
+            }
+        }
+    }
+}
+
+trait ItemDisplay {
+    fn text(&self) -> String;
+}
 
 pub trait Mode {
     fn name(&self) -> &str;
-    fn run(&mut self, input: &str) -> Vec<String>;
+    fn options(&mut self) -> Vec<Item>;
 }
 
-pub struct FileMode;
+impl dyn Mode {
+    pub fn matches(&mut self, input: &str) -> Vec<Item> {
+        self.options()
+            .into_iter()
+            .filter(|i| i.text().contains(input))
+            .take(100) // Max to display
+            .collect()
+    }
+}
+
+pub struct FileMode {
+    root: PathBuf,
+}
+
+impl FileMode {
+    pub fn new(root: PathBuf) -> Self {
+        Self { root }
+    }
+}
+
 impl Mode for FileMode {
     fn name(&self) -> &str {
         "Files"
     }
 
-    fn run(&mut self, input: &str) -> Vec<String> {
-        let home_dir = dirs::home_dir().unwrap();
-        Walk::new(home_dir)
+    fn options(&mut self) -> Vec<Item> {
+        Walk::new(&self.root)
             .filter_map(Result::ok)
-            .filter_map(|entry| {
-                let path = entry.path();
-                if !path.is_file() {
-                    return None;
-                }
-                let name = path.file_name().and_then(|name| name.to_str());
-                if let Some(name) = name {
-                    if name.contains(input) {
-                        return Some(path.display().to_string());
-                    }
-                }
-                None
-            })
-            .take(10)
+            .map(|entry| Item::File(entry.path().to_path_buf()))
             .collect()
     }
 }
@@ -67,11 +113,35 @@ impl Mode for RunMode {
         "Run"
     }
 
-    fn run(&mut self, input: &str) -> Vec<String> {
+    fn options(&mut self) -> Vec<Item> {
         get_path_dirs()
             .into_iter()
             .flat_map(get_files)
-            .filter(|p| p.starts_with(input))
+            .map(Item::Command)
             .collect()
+    }
+}
+
+pub struct DmenuMode {
+    options: Vec<Item>,
+}
+
+impl DmenuMode {
+    pub fn new(input: String) -> Self {
+        let options = input
+            .lines()
+            .map(|s| Item::Selection(s.to_string()))
+            .collect();
+        Self { options }
+    }
+}
+
+impl Mode for DmenuMode {
+    fn name(&self) -> &str {
+        "dmenu"
+    }
+
+    fn options(&mut self) -> Vec<Item> {
+        self.options.clone()
     }
 }

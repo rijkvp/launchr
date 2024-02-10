@@ -13,7 +13,9 @@ dirs = "5.0"
 ignore = "0.4"
 tracing = "0.1"
 tracing-subscriber = { version ="0.3", features = ["env-filter"] }
-crossbeam-channel = "0.5.11"
+crossbeam-channel = "0.5"
+clap = { version = "4.5", features = ["derive"] }
+open = "5.0"
 
 [profile.release]
 strip = "debuginfo"

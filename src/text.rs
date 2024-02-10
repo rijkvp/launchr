@@ -5,7 +5,6 @@ use cosmic_text::{
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
 use tiny_skia::{Color, PixmapMut};
-use tracing::info;
 use winit::keyboard::KeyCode;
 
 static FONT_SYSTEM: Lazy<Mutex<FontSystem>> = Lazy::new(|| Mutex::new(FontSystem::new()));
@@ -46,12 +45,10 @@ const DEFAULT_ATTRS: Attrs = Attrs {
 
 impl Text {
     pub fn new(rect: Rect, font_size: f32) -> Self {
-        info!("Creating text");
         let mut font_system = FONT_SYSTEM.lock().unwrap();
         let mut buffer =
             cosmic_text::Buffer::new(&mut font_system, Metrics::new(font_size, font_size));
         buffer.set_size(&mut font_system, rect.width as f32, rect.height as f32);
-        info!("Text created");
         Self { rect, buffer }
     }
 
@@ -89,7 +86,6 @@ impl Editor {
             // Intial text must be set
             buf.set_text(&mut font_system, "", DEFAULT_ATTRS, Shaping::Basic);
         });
-        info!("Editor created");
         Self { rect, editor }
     }
 

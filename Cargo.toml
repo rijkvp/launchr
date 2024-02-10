@@ -11,6 +11,9 @@ cosmic-text = { version = "0.11.2", features = ["shape-run-cache"] }
 once_cell = "1.19"
 dirs = "5.0"
 ignore = "0.4"
+tracing = "0.1"
+tracing-subscriber = { version ="0.3", features = ["env-filter"] }
+crossbeam-channel = "0.5.11"
 
 [profile.release]
 strip = "debuginfo"

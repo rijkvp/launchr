@@ -1,6 +1,6 @@
 use crate::app::App;
 use softbuffer::{Context, Surface};
-use std::{num::NonZeroU32, sync::Arc, time::Instant};
+use std::{num::NonZeroU32, sync::Arc};
 use tiny_skia::{Color, PixmapMut};
 use winit::window::Window;
 
@@ -23,7 +23,6 @@ impl Renderer {
     }
 
     pub fn draw(&mut self, app: &mut App) {
-        let time = Instant::now();
         let (width, height) = {
             let size = self.window.inner_size();
             (size.width, size.height)
@@ -48,6 +47,5 @@ impl Renderer {
         app.text.render(&mut pixmap, width, height);
 
         surface_buffer.present().unwrap();
-        println!("Rendered in {:?}", time.elapsed());
     }
 }

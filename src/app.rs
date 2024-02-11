@@ -10,7 +10,7 @@ use winit::{
     event::{ElementState, Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
-    window::WindowBuilder,
+    window::{WindowBuilder, WindowLevel},
 };
 
 pub struct App {
@@ -40,6 +40,10 @@ impl App {
         let window = Arc::new(
             WindowBuilder::new()
                 .with_title("Launcher")
+                .with_decorations(false)
+                .with_resizable(false)
+                .with_transparent(true)
+                .with_window_level(WindowLevel::AlwaysOnTop)
                 .build(&event_loop)
                 .unwrap(),
         );

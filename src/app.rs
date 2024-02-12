@@ -1,10 +1,10 @@
 use crate::{
+    component::{container::Container, text::TextEditor, Component},
     mode::{Item, Mode},
-    render::Renderer,
-    text::{Editor, Rect, Text},
+    render::{Color, Rect, Renderer},
 };
 use cosmic_text::Action;
-use std::{sync::Arc, time::Instant};
+use std::{iter::once, sync::Arc, time::Instant};
 use tracing::info;
 use winit::{
     event::{ElementState, Event, WindowEvent},
@@ -15,8 +15,7 @@ use winit::{
 
 pub struct App {
     pub mode: Box<dyn Mode>,
-    pub editor: Editor,
-    pub text: Text,
+    // pub editor: TextEditor,
     pub matches: Vec<Item>,
     pub selected: usize,
 }
@@ -26,8 +25,6 @@ impl App {
         info!("Creating app");
         Self {
             mode,
-            editor: Editor::new(Rect::new(8, 8, 800, 56), 20.0),
-            text: Text::new(Rect::new(8, 64, 800, 600), 20.0),
             matches: Vec::new(),
             selected: 0,
         }
@@ -50,6 +47,8 @@ impl App {
         let mut renderer = Renderer::from_window(window.clone());
         event_loop.set_control_flow(ControlFlow::Wait);
         self.matches = self.mode.matches("");
+
+        let mut editor = TextEditor::new(Rect::new(8, 8, 800, 56), 20.0);
         event_loop
             .run(move |event, elwt| match event {
                 Event::WindowEvent { event, .. } => match event {
@@ -59,17 +58,13 @@ impl App {
                     }
                     WindowEvent::RedrawRequested => {
                         let time = Instant::now();
-                        {
-                            self.text.set_text(
-                                &self
-                                    .matches
-                                    .iter()
-                                    .map(|i| i.display())
-                                    .collect::<Vec<String>>()
-                                    .join("\n"),
-                            );
-                        }
-                        renderer.draw(self);
+
+                        let background = Component::Container(Container::new(
+                            Rect::new(0, 0, 400, 100),
+                            Color::from_rgba8(255, 0, 0, 255),
+                        ));
+                        let editor = Component::Editor(&mut editor);
+                        renderer.draw(once(background).chain(once(editor)));
                         info!("Rendered in {:?}", time.elapsed());
                     }
                     WindowEvent::KeyboardInput { event, .. } => {
@@ -83,16 +78,16 @@ impl App {
                             } else {
                                 // Edtior input
                                 if let PhysicalKey::Code(key) = event.physical_key {
-                                    is_dirty = self.editor.handle_key(key);
+                                    is_dirty = editor.handle_key(key);
                                 }
                                 if let Some(char) = event.text.and_then(|t| t.chars().next()) {
-                                    self.editor.perform_action(Action::Insert(char));
+                                    editor.perform_action(Action::Insert(char));
                                     is_dirty = true;
                                 }
                             }
                         }
                         if is_dirty {
-                            self.matches = self.mode.matches(&self.editor.text());
+                            self.matches = self.mode.matches(&editor.text());
                             window.request_redraw();
                         }
                     }

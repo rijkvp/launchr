@@ -1,33 +1,17 @@
+use super::Drawable;
+use crate::render::{fill_rect, Rect};
 use cosmic_text::{
     Action, Attrs, CacheKeyFlags, Edit, Family, FontSystem, Metrics, Motion, Shaping, Stretch,
     Style, SwashCache, Weight,
 };
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
-use tiny_skia::{Color, PixmapMut};
+use tiny_skia::PixmapMut;
 use tracing::info;
 use winit::keyboard::KeyCode;
 
 static FONT_SYSTEM: Lazy<Mutex<FontSystem>> = Lazy::new(|| Mutex::new(FontSystem::new()));
 static SWASH_CACHE: Lazy<Mutex<SwashCache>> = Lazy::new(|| Mutex::new(SwashCache::new()));
-
-pub struct Rect {
-    pub x: i32,
-    pub y: i32,
-    pub width: u32,
-    pub height: u32,
-}
-
-impl Rect {
-    pub fn new(x: i32, y: i32, width: u32, height: u32) -> Self {
-        Self {
-            x,
-            y,
-            width,
-            height,
-        }
-    }
-}
 
 pub struct Text {
     rect: Rect,
@@ -36,7 +20,7 @@ pub struct Text {
 
 const DEFAULT_ATTRS: Attrs = Attrs {
     color_opt: None,
-    family: Family::SansSerif,
+    family: Family::Name("Iosevka Nerd Font"),
     stretch: Stretch::Normal,
     style: Style::Normal,
     weight: Weight::NORMAL,
@@ -53,13 +37,20 @@ impl Text {
         Self { rect, buffer }
     }
 
+    pub fn with_text(mut self, text: &str) -> Self {
+        self.set_text(text);
+        self
+    }
+
     pub fn set_text(&mut self, text: &str) {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
         self.buffer
             .set_text(&mut font_system, text, DEFAULT_ATTRS, Shaping::Basic);
     }
+}
 
-    pub fn render(&mut self, pixmap: &mut PixmapMut) {
+impl Drawable for Text {
+    fn render(&self, pixmap: &mut PixmapMut) {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
         let mut swash_cache = SWASH_CACHE.lock().unwrap();
         self.buffer.draw(
@@ -71,12 +62,12 @@ impl Text {
     }
 }
 
-pub struct Editor {
+pub struct TextEditor {
     rect: Rect,
     editor: cosmic_text::Editor<'static>,
 }
 
-impl Editor {
+impl TextEditor {
     pub fn new(rect: Rect, font_size: f32) -> Self {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
         let mut buffer =
@@ -95,25 +86,6 @@ impl Editor {
             .with_buffer(|buf| buf.lines[0].text().to_string())
     }
 
-    pub fn render(&mut self, pixmap: &mut PixmapMut) {
-        let mut font_system = FONT_SYSTEM.lock().unwrap();
-        let mut swash_cache = SWASH_CACHE.lock().unwrap();
-        self.editor.shape_as_needed(&mut font_system, true);
-        if self.editor.redraw() {
-            self.editor.draw(
-                &mut font_system,
-                &mut swash_cache,
-                cosmic_text::Color::rgb(0xFF, 0xFF, 0xFF),
-                cosmic_text::Color::rgb(0xAA, 0xFF, 0xFF),
-                cosmic_text::Color::rgb(0xAA, 0xAA, 0xFF),
-                |x, y, w, h, color| {
-                    fill_rect(pixmap, self.rect.x + x, self.rect.y + y, w, h, color)
-                },
-            );
-            self.editor.set_redraw(false);
-        }
-    }
-
     pub fn handle_key(&mut self, key: KeyCode) -> bool {
         match key {
             KeyCode::Backspace => self.perform_action(Action::Backspace),
@@ -130,30 +102,25 @@ impl Editor {
         info!("Action: {:?}", action);
         let mut font_system = FONT_SYSTEM.lock().unwrap();
         self.editor.action(&mut font_system, action);
+        self.editor.shape_as_needed(&mut font_system, false);
     }
 }
 
-// TODO: Improve performance
-fn fill_rect(pixmap: &mut PixmapMut, x: i32, y: i32, w: u32, h: u32, color: cosmic_text::Color) {
-    let (x, y, w, h) = (x as usize, y as usize, w as usize, h as usize);
-    let (width, height) = (pixmap.width() as usize, pixmap.height() as usize);
-    let max_x = x.saturating_add(w).min(width); // Prevent overflow & clamp to width
-    let max_y = y.saturating_add(h).min(height);
-    if max_x <= x || max_y <= y {
-        // Don't render if the rect is out of bounds
-        return;
-    }
-    let (r, g, b, a) = (color.r(), color.g(), color.b(), color.a());
-    if a == 0 {
-        // Don't render transparent pixels
-        return;
-    }
-    let color = Color::from_rgba8(r, g, b, a).premultiply().to_color_u8();
-    let pixels = pixmap.pixels_mut();
-    for j in y..max_y {
-        let row_start = j * width;
-        for i in x..max_x {
-            pixels[row_start + i] = color;
+impl Drawable for TextEditor {
+    fn render(&self, pixmap: &mut PixmapMut) {
+        let mut font_system = FONT_SYSTEM.lock().unwrap();
+        let mut swash_cache = SWASH_CACHE.lock().unwrap();
+        if self.editor.redraw() {
+            self.editor.draw(
+                &mut font_system,
+                &mut swash_cache,
+                cosmic_text::Color::rgb(0xFF, 0xFF, 0xFF),
+                cosmic_text::Color::rgb(0xFF, 0xFF, 0xFF),
+                cosmic_text::Color::rgb(0xAA, 0xAA, 0xFF),
+                |x, y, w, h, color| {
+                    fill_rect(pixmap, self.rect.x + x, self.rect.y + y, w, h, color)
+                },
+            );
         }
     }
 }

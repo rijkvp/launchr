@@ -1,7 +1,7 @@
 mod app;
+mod component;
 mod mode;
 mod render;
-mod text;
 
 use app::App;
 use clap::Parser;

@@ -1,5 +1,9 @@
 use crate::{
-    component::{container::Container, text::TextEditor, Component},
+    component::{
+        container::Container,
+        text::{Text, TextEditor},
+        Component,
+    },
     mode::{Item, Mode},
     render::{Color, Rect, Renderer},
 };
@@ -13,9 +17,13 @@ use winit::{
     window::{WindowBuilder, WindowLevel},
 };
 
+const WIDTH: u64 = 800;
+const HEIGHT: u64 = 400;
+const MARGIN: u64 = 8;
+const FONT_SIZE: u64 = 22;
+
 pub struct App {
     pub mode: Box<dyn Mode>,
-    // pub editor: TextEditor,
     pub matches: Vec<Item>,
     pub selected: usize,
 }
@@ -28,6 +36,33 @@ impl App {
             matches: Vec::new(),
             selected: 0,
         }
+    }
+
+    fn render_matches(&self, outer: Rect) -> Vec<Component> {
+        let mut components = Vec::new();
+        for (i, item) in self.matches.iter().enumerate() {
+            let color = if i == self.selected {
+                Color::from_rgba8(200, 200, 200, 255)
+            } else {
+                Color::from_rgba8(0, 0, 255, 255)
+            };
+            let y = outer.y + i as u64 * FONT_SIZE;
+            if y > outer.height {
+                break;
+            }
+            components.push(Component::Container(Container::new(
+                Rect::new(outer.x, y, outer.width, FONT_SIZE),
+                color,
+            )));
+            components.push(Component::Text(
+                Text::new(
+                    Rect::new(outer.x, y, outer.width, FONT_SIZE),
+                    FONT_SIZE as f32,
+                )
+                .with_text(&item.display()),
+            ));
+        }
+        components
     }
 
     pub fn run(&mut self) {
@@ -48,7 +83,10 @@ impl App {
         event_loop.set_control_flow(ControlFlow::Wait);
         self.matches = self.mode.matches("");
 
-        let mut editor = TextEditor::new(Rect::new(8, 8, 800, 56), 20.0);
+        let mut editor = TextEditor::new(
+            Rect::new(MARGIN, MARGIN, WIDTH, FONT_SIZE),
+            FONT_SIZE as f32,
+        );
         event_loop
             .run(move |event, elwt| match event {
                 Event::WindowEvent { event, .. } => match event {
@@ -60,11 +98,25 @@ impl App {
                         let time = Instant::now();
 
                         let background = Component::Container(Container::new(
-                            Rect::new(0, 0, 400, 100),
+                            Rect::new(0, 0, WIDTH, HEIGHT),
                             Color::from_rgba8(255, 0, 0, 255),
                         ));
+                        let editor_bg = Component::Container(Container::new(
+                            Rect::new(MARGIN, MARGIN, WIDTH - MARGIN * 2, FONT_SIZE),
+                            Color::from_rgba8(0, 255, 0, 255),
+                        ));
                         let editor = Component::Editor(&mut editor);
-                        renderer.draw(once(background).chain(once(editor)));
+                        renderer.draw(
+                            once(background)
+                                .chain(once(editor_bg))
+                                .chain(once(editor))
+                                .chain(self.render_matches(Rect::new(
+                                    MARGIN,
+                                    MARGIN + FONT_SIZE,
+                                    WIDTH - MARGIN * 2,
+                                    800,
+                                ))),
+                        );
                         info!("Rendered in {:?}", time.elapsed());
                     }
                     WindowEvent::KeyboardInput { event, .. } => {
@@ -74,6 +126,14 @@ impl App {
                                 elwt.exit();
                             } else if event.physical_key == PhysicalKey::Code(KeyCode::Enter) {
                                 self.matches[self.selected].exec();
+                                is_dirty = true;
+                            } else if event.physical_key == PhysicalKey::Code(KeyCode::ArrowDown) {
+                                if self.selected < self.matches.len() - 1 {
+                                    self.selected += 1;
+                                    is_dirty = true;
+                                }
+                            } else if event.physical_key == PhysicalKey::Code(KeyCode::ArrowUp) {
+                                self.selected = self.selected.saturating_sub(1);
                                 is_dirty = true;
                             } else {
                                 // Edtior input

@@ -57,7 +57,18 @@ impl Drawable for Text {
             &mut font_system,
             &mut swash_cache,
             cosmic_text::Color::rgb(0xFF, 0xFF, 0xFF),
-            |x, y, w, h, color| fill_rect(pixmap, self.rect.x + x, self.rect.y + y, w, h, color),
+            |x, y, w, h, color| {
+                fill_rect(
+                    pixmap,
+                    Rect::new(
+                        self.rect.x + x.max(0) as u64,
+                        self.rect.y + y.max(0) as u64,
+                        w as u64,
+                        h as u64,
+                    ),
+                    color,
+                )
+            },
         );
     }
 }
@@ -118,7 +129,16 @@ impl Drawable for TextEditor {
                 cosmic_text::Color::rgb(0xFF, 0xFF, 0xFF),
                 cosmic_text::Color::rgb(0xAA, 0xAA, 0xFF),
                 |x, y, w, h, color| {
-                    fill_rect(pixmap, self.rect.x + x, self.rect.y + y, w, h, color)
+                    fill_rect(
+                        pixmap,
+                        Rect::new(
+                            self.rect.x + x.max(0) as u64,
+                            self.rect.y + y.max(0) as u64,
+                            w as u64,
+                            h as u64,
+                        ),
+                        color,
+                    )
                 },
             );
         }

@@ -4,8 +4,10 @@ use crate::{
         text::{Text, TextEditor},
         Component,
     },
-    mode::{Item, Mode},
-    render::{Color, Rect, Renderer},
+    config::Config,
+    item::Item,
+    mode::Mode,
+    render::{Rect, Renderer},
 };
 use cosmic_text::Action;
 use std::{iter::once, sync::Arc, time::Instant};
@@ -23,9 +25,10 @@ const MARGIN: u64 = 8;
 const FONT_SIZE: u64 = 22;
 
 pub struct App {
-    pub mode: Box<dyn Mode>,
-    pub matches: Vec<Item>,
-    pub selected: usize,
+    mode: Box<dyn Mode>,
+    matches: Vec<Item>,
+    selected: usize,
+    config: Config,
 }
 
 impl App {
@@ -35,16 +38,18 @@ impl App {
             mode,
             matches: Vec::new(),
             selected: 0,
+            config: Config::default(), // TOOD: Load from file
         }
     }
 
     fn render_matches(&self, outer: Rect) -> Vec<Component> {
         let mut components = Vec::new();
-        for (i, item) in self.matches.iter().enumerate() {
-            let color = if i == self.selected {
-                Color::from_rgba8(200, 200, 200, 50)
+        // TODO: Don't render too much
+        for (i, item) in self.matches.iter().enumerate().take(10) {
+            let bg_color = if i == self.selected {
+                self.config.colors.primary
             } else {
-                Color::from_rgba8(0, 0, 255, 50)
+                self.config.colors.background_second
             };
             let y = outer.y + i as u64 * FONT_SIZE;
             if y > outer.height {
@@ -52,7 +57,7 @@ impl App {
             }
             components.push(Component::Container(Container::new(
                 Rect::new(outer.x, y, outer.width, FONT_SIZE),
-                color,
+                bg_color,
             )));
             components.push(Component::Text(
                 Text::new(
@@ -81,7 +86,7 @@ impl App {
         );
         let mut renderer = Renderer::from_window(window.clone());
         event_loop.set_control_flow(ControlFlow::Wait);
-        self.matches = self.mode.matches("");
+        self.matches = self.mode.matches(""); // initial matches
 
         let mut editor = TextEditor::new(
             Rect::new(MARGIN, MARGIN, WIDTH, FONT_SIZE),
@@ -99,11 +104,11 @@ impl App {
 
                         let background = Component::Container(Container::new(
                             Rect::new(0, 0, WIDTH, HEIGHT),
-                            Color::from_rgba8(255, 0, 0, 255),
+                            self.config.colors.background,
                         ));
                         let editor_bg = Component::Container(Container::new(
                             Rect::new(MARGIN, MARGIN, WIDTH - MARGIN * 2, FONT_SIZE),
-                            Color::from_rgba8(0, 255, 0, 255),
+                            self.config.colors.background_second,
                         ));
                         let editor = Component::Editor(&mut editor);
                         renderer.draw(
@@ -127,6 +132,7 @@ impl App {
                             } else if event.physical_key == PhysicalKey::Code(KeyCode::Enter) {
                                 self.matches[self.selected].exec();
                                 is_dirty = true;
+                                elwt.exit();
                             } else if event.physical_key == PhysicalKey::Code(KeyCode::ArrowDown) {
                                 if self.selected < self.matches.len() - 1 {
                                     self.selected += 1;
@@ -158,37 +164,3 @@ impl App {
             .unwrap();
     }
 }
-
-// TODO: Multithreading
-// pub fn _start_search_thread(
-//     window: Arc<Window>,
-//     matches: Arc<Mutex<Vec<String>>>,
-// ) -> Sender<String> {
-//     let (input_tx, input_rx) = crossbeam_channel::unbounded::<String>();
-//     let mut mode = RunMode;
-//     thread::spawn(move || {
-//         let mut next_input = None;
-//         loop {
-//             let input = if let Some(input) = next_input.take() {
-//                 input
-//             } else {
-//                 input_rx.recv().unwrap()
-//             };
-//             info!("Starting search for {:?}", input);
-//             let time = Instant::now();
-//             let new_matches: Vec<String> = file_mode.matches(&input);
-//             if let Ok(new) = input_rx.try_recv() {
-//                 // Iput has changed in the meantime
-//                 info!("Search cancelled, replaced by {:?}", new);
-//                 return;
-//             }
-//             info!("{} new matches in {:?}", new_matches.len(), time.elapsed());
-//             {
-//                 let mut matches = matches.lock().unwrap();
-//                 *matches = new_matches;
-//             }
-//             window.request_redraw();
-//         }
-//     });
-//     input_tx
-// }

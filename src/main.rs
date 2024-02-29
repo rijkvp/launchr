@@ -1,11 +1,14 @@
 mod app;
 mod component;
+mod config;
+mod item;
 mod mode;
 mod render;
+mod util;
 
 use app::App;
 use clap::Parser;
-use mode::{DmenuMode, FileMode, Mode, RunMode};
+use mode::{AppsMode, DmenuMode, FileMode, Mode, RunMode};
 use std::io::{self, Read};
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
@@ -41,7 +44,8 @@ fn main() {
         Box::new(DmenuMode::new(buffer))
     } else {
         match args.mode.as_str() {
-            "run" => Box::new(RunMode),
+            "apps" => Box::new(AppsMode::load()),
+            "run" => Box::new(RunMode::load()),
             "file" => Box::new(FileMode::new(dirs::home_dir().unwrap())),
             other => {
                 eprintln!("Unknown mode: {}", other);

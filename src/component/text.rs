@@ -4,10 +4,10 @@ use cosmic_text::{
     Action, Attrs, CacheKeyFlags, Edit, Family, FontSystem, Metrics, Motion, Shaping, Stretch,
     Style, SwashCache, Weight,
 };
+use log::info;
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
 use tiny_skia::PixmapMut;
-use tracing::info;
 use winit::keyboard::KeyCode;
 
 static FONT_SYSTEM: Lazy<Mutex<FontSystem>> = Lazy::new(|| Mutex::new(FontSystem::new()));

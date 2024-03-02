@@ -8,10 +8,9 @@ mod util;
 
 use app::App;
 use clap::Parser;
+use log::LevelFilter;
 use mode::{AppsMode, DmenuMode, FileMode, Mode, RunMode};
 use std::io::{self, Read};
-use tracing::level_filters::LevelFilter;
-use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -27,13 +26,8 @@ struct Args {
 fn main() {
     let args: Args = Args::parse();
 
-    tracing_subscriber::registry()
-        .with(fmt::layer())
-        .with(
-            EnvFilter::builder()
-                .with_default_directive(LevelFilter::INFO.into())
-                .from_env_lossy(),
-        )
+    pretty_env_logger::formatted_builder()
+        .filter_level(LevelFilter::Info)
         .init();
 
     let mode: Box<dyn Mode> = if args.dmenu {

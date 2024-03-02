@@ -11,7 +11,10 @@ impl RunMode {
         Self {
             options: util::find_files_from_env("PATH", &|_| true)
                 .into_iter()
-                .map(|path| Item::Command(path.to_string_lossy().to_string()))
+                .map(|path| Item::Exec {
+                    name: path.file_name().unwrap().to_string_lossy().to_string(),
+                    exec: path.to_string_lossy().to_string(),
+                })
                 .collect(),
         }
     }

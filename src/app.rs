@@ -11,7 +11,7 @@ use crate::{
 };
 use cosmic_text::Action;
 use std::{iter::once, sync::Arc, time::Instant};
-use tracing::info;
+use log::info;
 use winit::{
     event::{ElementState, Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},

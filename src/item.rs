@@ -3,7 +3,7 @@ use std::{path::PathBuf, process::Command};
 #[derive(Debug, Clone)]
 pub enum Item {
     File(PathBuf),
-    Command(String),
+    Exec { name: String, exec: String },
     Selection(String),
 }
 
@@ -17,7 +17,7 @@ impl Item {
                     path.file_name().unwrap().to_string_lossy()
                 )
             }
-            Item::Command(cmd) => cmd.to_string(),
+            Item::Exec { name, .. } => name.to_string(),
             Item::Selection(s) => s.to_string(),
         }
     }
@@ -25,7 +25,7 @@ impl Item {
     pub fn text(&self) -> String {
         match self {
             Item::File(path) => path.file_name().unwrap().to_string_lossy().to_string(),
-            Item::Command(cmd) => cmd.to_string(),
+            Item::Exec { name, .. } => name.to_string(),
             Item::Selection(s) => s.to_string(),
         }
     }
@@ -38,10 +38,10 @@ impl Item {
                     eprintln!("Failed to open {}: {}", path.display(), e);
                 }
             }
-            Item::Command(cmd) => {
-                // Run the command
-                if let Err(e) = Command::new(&cmd).spawn() {
-                    eprintln!("Failed to run {}: {}", cmd, e);
+            Item::Exec { name: _, exec } => {
+                // Execute the command
+                if let Err(e) = Command::new(&exec).spawn() {
+                    eprintln!("Failed to run {}: {}", exec, e);
                 }
             }
             Item::Selection(_) => {

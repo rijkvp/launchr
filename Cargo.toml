@@ -1,5 +1,5 @@
 [package]
-name = "launcher-rust"
+name = "launcher"
 version = "0.1.0"
 edition = "2021"
 
@@ -16,9 +16,17 @@ pretty_env_logger = "0.5"
 crossbeam-channel = "0.5"
 clap = { version = "4.5", features = ["derive"] }
 open = "5.0"
-walkdir = "2.5.0"
+walkdir = "2.5"
+rayon = "1.9"
 
 [profile.release]
 strip = "debuginfo"
 lto = true
 codegen-units = 1
+
+[dev-dependencies]
+divan = "0.1.14"
+
+[[bench]]
+name = "files"
+harness = false

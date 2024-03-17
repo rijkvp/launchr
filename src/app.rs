@@ -142,7 +142,7 @@ impl App {
                                 self.selected = self.selected.saturating_sub(1);
                                 is_dirty = true;
                             } else {
-                                // Edtior input
+                                // Editor input
                                 if let PhysicalKey::Code(key) = event.physical_key {
                                     is_dirty = editor.handle_key(key);
                                 }

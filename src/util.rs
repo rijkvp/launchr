@@ -1,14 +1,14 @@
+use rayon::prelude::*;
 use std::{
     collections::HashSet,
     env,
     path::{Path, PathBuf},
 };
-
 use walkdir::WalkDir;
 
-pub fn find_files_from_env<F: Fn(&Path) -> bool>(env_var: &str, filter: &F) -> Vec<PathBuf> {
+pub fn find_files_from_env<F: Fn(&Path) -> bool + Sync>(env_var: &str, filter: &F) -> Vec<PathBuf> {
     get_dirs(env_var)
-        .into_iter()
+        .into_par_iter()
         .flat_map(|dir| get_files(dir, filter))
         .collect::<HashSet<PathBuf>>() // Not very clean, but it prevents duplicates
         .into_iter()
@@ -29,17 +29,13 @@ where
     WalkDir::new(dir)
         .into_iter()
         .filter_map(Result::ok)
-        .filter(|e| {
+        .filter_map(|e| {
             let p = e.path();
-            // Filter & ignore hidden files
-            p.is_file()
-                && filter(p)
-                && !e
-                    .file_name()
-                    .to_str()
-                    .map(|s| s.starts_with('.'))
-                    .unwrap_or(false)
+            if p.is_file() && filter(p) {
+                Some(p.to_path_buf())
+            } else {
+                None
+            }
         })
-        .map(|e| e.path().to_path_buf())
         .collect()
 }

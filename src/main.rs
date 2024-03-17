@@ -1,16 +1,8 @@
-mod app;
-mod component;
-mod config;
-mod item;
-mod mode;
-mod render;
-mod util;
-
-use app::App;
 use clap::Parser;
-use log::LevelFilter;
-use mode::{AppsMode, DmenuMode, FileMode, Mode, RunMode};
 use std::io::{self, Read};
+
+use launcher::app::App;
+use launcher::mode::{AppsMode, DmenuMode, FileMode, Mode, RunMode};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -27,7 +19,7 @@ fn main() {
     let args: Args = Args::parse();
 
     pretty_env_logger::formatted_builder()
-        .filter_level(LevelFilter::Info)
+        .filter_level(log::LevelFilter::Info)
         .init();
 
     let mode: Box<dyn Mode> = if args.dmenu {

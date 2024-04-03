@@ -19,6 +19,9 @@ open = "5.0"
 walkdir = "2.5"
 rayon = "1.9"
 
+[profile.dev.package."*"]
+opt-level = 3
+
 [profile.release]
 strip = "debuginfo"
 lto = true

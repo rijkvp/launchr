@@ -1,6 +1,5 @@
 use super::Mode;
 use crate::{item::Item, util};
-use log::{debug, info};
 use rayon::prelude::*;
 use std::io::BufRead;
 use std::{ffi::OsStr, fs::File, io::BufReader, path::Path, time::Instant};
@@ -11,10 +10,9 @@ pub struct AppsMode {
 
 impl AppsMode {
     pub fn load() -> Self {
-        let start = Instant::now();
-        let apps = load_apps();
-        info!("Loaded {} apps in {:?}", apps.len(), start.elapsed());
-        Self { options: apps }
+        Self {
+            options: load_desktop_files(),
+        }
     }
 }
 
@@ -28,25 +26,35 @@ impl Mode for AppsMode {
     }
 }
 
-fn load_apps() -> Vec<Item> {
-    let start = Instant::now();
-    let items = util::find_files_from_env("XDG_DATA_DIRS", &|path| {
+fn load_desktop_files() -> Vec<Item> {
+    let mut timer = Instant::now();
+    let desktop_files = util::find_files_from_env("XDG_DATA_DIRS", &|path| {
         Some(OsStr::new("desktop")) == path.extension()
     });
-    info!("Loaded {} env in {:?}", items.len(), start.elapsed());
+    log::info!(
+        "Found {} desktop files in {:?}",
+        desktop_files.len(),
+        timer.elapsed()
+    );
 
-    let mut items = items
+    timer = Instant::now();
+    let mut items = desktop_files
         .into_par_iter()
         .filter_map(|path| read_desktop_file(&path))
         .collect::<Vec<Item>>();
+    log::info!(
+        "Parsed {} desktop files in {:?}",
+        items.len(),
+        timer.elapsed()
+    );
     items.sort_unstable_by_key(|a| a.text());
     items
 }
 
 // Per the Desktop Entry Specification: https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html
 fn read_desktop_file(path: &Path) -> Option<Item> {
-    let mut name = None;
-    let mut exec = None;
+    let mut name_str = None;
+    let mut exec_str = None;
 
     let file = File::open(path).ok()?;
     for line in BufReader::new(file).lines() {
@@ -57,36 +65,54 @@ fn read_desktop_file(path: &Path) -> Option<Item> {
         }
         if let Some((key, value)) = line.split_once('=').map(|(k, v)| (k.trim(), v.trim())) {
             match key {
-                "Name" => name = Some(value.to_string()),
-                "Exec" => exec = Some(value.to_string()),
+                "Name" => name_str = Some(value.to_string()),
+                "Exec" => exec_str = Some(value.to_string()),
                 _ => {}
             }
         }
-        if name.is_some() && exec.is_some() {
+        if name_str.is_some() && exec_str.is_some() {
             break;
         }
     }
-    let name = unescape_string(&name?);
-    let exec = exec?;
-    let exec_args = exec_args(&exec);
-    let exec = exec_args
-        .into_iter()
-        .filter_map(|a| {
-            if let DesktopArg::Arg(s) = a {
-                Some(s)
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<String>>()
-        .join(" ");
+    let name = unescape_string(&name_str?);
+    let exec_args = ExecKey::parse(&exec_str?);
+    let exec = exec_args.expand();
 
-    debug!("Desktop file: {} -> {}", name, exec);
+    log::debug!("Desktop file: {} -> {}", name, exec);
     Some(Item::Exec { name, exec })
 }
 
 #[derive(Debug, Clone, PartialEq)]
-enum DesktopArg {
+pub struct ExecKey(Vec<ExecArg>);
+
+impl ExecKey {
+    /// Parse the exec string according to the Desktop Entry Specification
+    pub fn parse(s: &str) -> Self {
+        Self(
+            unquote_args(&unescape_string(s))
+                .into_iter()
+                .flat_map(|a| field_codes(&a))
+                .collect(),
+        )
+    }
+
+    /// Expand field codes without data
+    fn expand(&self) -> String {
+        let mut result = String::new();
+        for (i, arg) in self.0.iter().enumerate() {
+            if let ExecArg::Arg(s) = arg {
+                result.push_str(&s);
+                if i < self.0.len() - 1 {
+                    result.push(' ');
+                }
+            }
+        }
+        result
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum ExecArg {
     Arg(String),
     File,
     Files,
@@ -94,32 +120,44 @@ enum DesktopArg {
     Urls,
 }
 
-/// Parse the exec string according to the Desktop Entry Specification
-// TODO: Handle escaping of %%
-fn exec_args(exec: &str) -> Vec<DesktopArg> {
+// Parse field code in Exec key according to the Desktop Entry Specification
+fn field_codes(input: &str) -> Vec<ExecArg> {
     let mut args = Vec::new();
-    for arg in unquote_args(&unescape_string(exec)) {
-        if arg.starts_with('%') && !arg.starts_with("%%") {
-            let code = &arg[1..];
-            if Some(a) = match code.chars().next() {
-                Some('f') => Some(DesktopArg::File),
-                Some('F') => Some(DesktopArg::Files),
-                Some('u') => Some(DesktopArg::Url),
-                Some('U') => Some(DesktopArg::Urls),
-                _ => None,
-            } {
-                args.push(a);
-                continue;
+    let mut current = String::new();
+    let mut iter = input.chars();
+    while let Some(c) = iter.next() {
+        if c == '%' {
+            if let Some(next) = iter.next() {
+                if next == '%' {
+                    current.push('%');
+                    continue;
+                } else if !current.is_empty() {
+                    args.push(ExecArg::Arg(current));
+                    current = String::new();
+                }
+                if let Some(arg) = match next {
+                    'f' => Some(ExecArg::File),
+                    'F' => Some(ExecArg::Files),
+                    'u' => Some(ExecArg::Url),
+                    'U' => Some(ExecArg::Urls),
+                    _ => None,
+                } {
+                    args.push(arg);
+                }
             }
+        } else {
+            current.push(c);
         }
-        args.push(DesktopArg::Arg(arg));
+    }
+    if !current.is_empty() {
+        args.push(ExecArg::Arg(current));
     }
     args
 }
 
 /// Unescape \s, \n, \t, \r, and \\
-fn unescape_string(str: &str) -> String {
-    let mut iter = str.chars().peekable();
+fn unescape_string(input: &str) -> String {
+    let mut iter = input.chars().peekable();
     let mut result = String::new();
     while let Some(c) = iter.next() {
         if c == '\\' {
@@ -218,23 +256,49 @@ mod tests {
 
     #[test]
     fn test_exec_args() {
-        assert_eq!(exec_args("foo"), vec![DesktopArg::Arg("foo".to_string())]);
         assert_eq!(
-            exec_args("fooview %F"),
-            vec![DesktopArg::Arg("fooview".to_string()), DesktopArg::Files]
+            ExecKey::parse("foo"),
+            ExecKey(vec![ExecArg::Arg("foo".to_string())])
         );
         assert_eq!(
-            exec_args("foo %f bar %F baz %u qux %U"),
-            vec![
-                DesktopArg::Arg("foo".to_string()),
-                DesktopArg::File,
-                DesktopArg::Arg("bar".to_string()),
-                DesktopArg::Files,
-                DesktopArg::Arg("baz".to_string()),
-                DesktopArg::Url,
-                DesktopArg::Arg("qux".to_string()),
-                DesktopArg::Urls
-            ]
+            ExecKey::parse("foo %% bar"),
+            ExecKey(vec![
+                ExecArg::Arg("foo".to_string()),
+                ExecArg::Arg("%".to_string()),
+                ExecArg::Arg("bar".to_string())
+            ])
+        );
+        assert_eq!(
+            ExecKey::parse("foo %% bar"),
+            ExecKey(vec![
+                ExecArg::Arg("foo".to_string()),
+                ExecArg::Arg("%".to_string()),
+                ExecArg::Arg("bar".to_string())
+            ])
+        );
+        assert_eq!(
+            ExecKey::parse("fooview %F"),
+            ExecKey(vec![ExecArg::Arg("fooview".to_string()), ExecArg::Files])
+        );
+        assert_eq!(
+            ExecKey::parse("invalid %! invalid %"), // Invalid field codes are ignored
+            ExecKey(vec![
+                ExecArg::Arg("invalid".to_string()),
+                ExecArg::Arg("invalid".to_string())
+            ])
+        );
+        assert_eq!(
+            ExecKey::parse("foo %f bar %F baz %u qux %U"),
+            ExecKey(vec![
+                ExecArg::Arg("foo".to_string()),
+                ExecArg::File,
+                ExecArg::Arg("bar".to_string()),
+                ExecArg::Files,
+                ExecArg::Arg("baz".to_string()),
+                ExecArg::Url,
+                ExecArg::Arg("qux".to_string()),
+                ExecArg::Urls
+            ])
         );
     }
 }

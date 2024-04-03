@@ -34,12 +34,14 @@ impl Item {
         match self {
             Item::File(path) => {
                 // Open the file using default software
+                log::info!("Opening file: {}", path.display());
                 if let Err(e) = open::that(&path) {
                     eprintln!("Failed to open {}: {}", path.display(), e);
                 }
             }
             Item::Exec { name: _, exec } => {
                 // Execute the command
+                log::info!("Executing: '{exec}'");
                 if let Err(e) = Command::new(&exec).spawn() {
                     eprintln!("Failed to run {}: {}", exec, e);
                 }

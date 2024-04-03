@@ -20,6 +20,7 @@ fn main() {
 
     pretty_env_logger::formatted_builder()
         .filter_level(log::LevelFilter::Info)
+        .parse_default_env()
         .init();
 
     let mode: Box<dyn Mode> = if args.dmenu {

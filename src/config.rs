@@ -1,8 +1,17 @@
 use tiny_skia::Color;
 
-#[derive(Default)]
 pub struct Config {
+    pub font_size: f32,
     pub colors: ColorConfig,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            font_size: 22.0,
+            colors: ColorConfig::default(),
+        }
+    }
 }
 
 pub struct ColorConfig {

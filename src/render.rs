@@ -3,7 +3,7 @@ use std::{num::NonZeroU32, sync::Arc};
 use tiny_skia::{PixmapMut, Transform};
 use winit::window::Window;
 
-use crate::component::{Component, Drawable};
+use crate::component::Component;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Rect {
@@ -56,7 +56,7 @@ impl Renderer {
         }
     }
 
-    pub fn draw<'a>(&mut self, drawables: impl Iterator<Item = Component<'a>>) {
+    pub fn draw(&mut self, root: &impl Component) {
         let (width, height) = {
             let size = self.window.inner_size();
             (size.width, size.height)
@@ -77,9 +77,8 @@ impl Renderer {
         let mut pixmap = PixmapMut::from_bytes(surface_buffer_u8, width, height).unwrap();
         pixmap.fill(Color::from_rgba8(0, 0, 0, 0));
 
-        for drawable in drawables {
-            drawable.render(&mut pixmap);
-        }
+        let window_bounds = Rect::new(0, 0, width as u64, height as u64);
+        root.render(window_bounds, &mut pixmap);
 
         surface_buffer.present().unwrap();
     }

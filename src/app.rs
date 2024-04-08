@@ -1,12 +1,12 @@
 use crate::{
-    component::{container::Container, text::TextEditor, Component},
     config::Config,
     item::Item,
     mode::Mode,
     render::Renderer,
+    ui::{column, container, Editor, Element, Length, SizedBox, TextEditor, UVec2, Widget},
 };
 use cosmic_text::Action;
-use std::{cell::RefCell, rc::Rc, sync::Arc, time::Instant};
+use std::{sync::Arc, time::Instant};
 use winit::{
     event::{ElementState, Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -21,15 +21,30 @@ pub struct App {
     config: Config,
 }
 
-fn build_ui(config: &Config) -> (Container, Rc<RefCell<TextEditor>>) {
-    let editor = Rc::new(RefCell::new(TextEditor::new(config.font_size)));
-    let editor_container = Container::from(editor.clone())
-        .with_padding(4)
-        .with_background(config.colors.background_second);
-    let root = Container::new(editor_container)
-        .with_padding(16)
-        .with_background(config.colors.background);
-    (root, editor)
+fn build_ui(config: &Config, editor: Editor) -> Element {
+    let editor = TextEditor::new(editor, config.font_size);
+    let editor_container = container(editor)
+        .padding(4)
+        .height(Length::Fixed(200))
+        .bg(config.colors.background_second);
+    let root = container(column(vec![
+        editor_container.into_element(),
+        SizedBox::new()
+            .color(config.colors.primary)
+            .width(Length::Fixed(50))
+            .height(Length::Fixed(100))
+            .into_element(),
+        SizedBox::new()
+            .color(config.colors.secondary)
+            .width(Length::Fixed(100))
+            .height(Length::Fixed(100))
+            .into_element(),
+    ]))
+    .padding(32)
+    .bg(config.colors.background)
+    .width(Length::Fill)
+    .height(Length::Fill);
+    root.into_element()
 }
 
 impl App {
@@ -89,13 +104,15 @@ impl App {
         event_loop.set_control_flow(ControlFlow::Wait);
         self.matches = self.mode.matches(""); // initial matches
 
-        let (mut root, editor) = build_ui(&self.config);
+        let mut editor = Editor::new();
+        let mut root = build_ui(&self.config, editor.clone());
         event_loop
             .run(move |event, elwt| match event {
                 Event::WindowEvent { event, .. } => match event {
                     WindowEvent::CloseRequested => elwt.exit(),
                     WindowEvent::Resized(e) => {
-                        root.layout(e.width as u64, e.height as u64);
+                        log::info!("resize window to {}x{}", e.width, e.height);
+                        root.layout(UVec2::new(e.width as u64, e.height as u64));
                         window.request_redraw();
                     }
                     WindowEvent::RedrawRequested => {
@@ -124,16 +141,16 @@ impl App {
                             } else {
                                 // Editor input
                                 if let PhysicalKey::Code(key) = event.physical_key {
-                                    is_dirty = editor.borrow_mut().handle_key(key);
+                                    is_dirty = editor.handle_key(key);
                                 }
                                 if let Some(char) = event.text.and_then(|t| t.chars().next()) {
-                                    editor.borrow_mut().perform_action(Action::Insert(char));
+                                    editor.perform_action(Action::Insert(char));
                                     is_dirty = true;
                                 }
                             }
                         }
                         if is_dirty {
-                            self.matches = self.mode.matches(&editor.borrow_mut().text());
+                            self.matches = self.mode.matches(&editor.text());
                             window.request_redraw();
                         }
                     }

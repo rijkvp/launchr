@@ -1,14 +1,14 @@
-use crate::render::{fill_rect, Rect};
+use super::{Rect, UVec2, Widget};
+use crate::render::fill_rect;
+
 use cosmic_text::{
     Action, Attrs, CacheKeyFlags, Edit, Family, FontSystem, Metrics, Motion, Shaping, Stretch,
     Style, SwashCache, Weight,
 };
 use once_cell::sync::Lazy;
-use std::sync::Mutex;
+use std::{cell::RefCell, rc::Rc, sync::Mutex};
 use tiny_skia::PixmapMut;
 use winit::keyboard::KeyCode;
-
-use super::Component;
 
 static FONT_SYSTEM: Lazy<Mutex<FontSystem>> = Lazy::new(|| Mutex::new(FontSystem::new()));
 static SWASH_CACHE: Lazy<Mutex<SwashCache>> = Lazy::new(|| Mutex::new(SwashCache::new()));
@@ -49,16 +49,17 @@ impl Text {
     }
 }
 
-impl Component for Text {
-    fn layout(&mut self, width: u64, height: u64) {
+impl Widget for Text {
+    fn layout(&mut self, bounds: UVec2) -> UVec2 {
         self.buffer.set_size(
             &mut FONT_SYSTEM.lock().unwrap(),
-            width as f32,
-            height as f32,
+            bounds.x as f32,
+            bounds.y as f32,
         );
+        bounds
     }
 
-    fn render(&self, bounds: Rect, pixmap: &mut PixmapMut) {
+    fn render(&self, pos: UVec2, pixmap: &mut PixmapMut) {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
         let mut swash_cache = SWASH_CACHE.lock().unwrap();
         self.buffer.draw(
@@ -69,8 +70,8 @@ impl Component for Text {
                 fill_rect(
                     pixmap,
                     Rect::new(
-                        bounds.x + x.max(0) as u64, // use max(0) to prevent underflow
-                        bounds.y + y.max(0) as u64,
+                        pos.x + x.max(0) as u64, // use max(0) to prevent underflow
+                        pos.y + y.max(0) as u64,
                         w as u64,
                         h as u64,
                     ),
@@ -81,27 +82,28 @@ impl Component for Text {
     }
 }
 
-pub struct TextEditor {
-    editor: cosmic_text::Editor<'static>,
+#[derive(Clone)]
+pub struct Editor {
+    inner: Rc<RefCell<cosmic_text::Editor<'static>>>,
 }
 
-impl TextEditor {
-    pub fn new(font_size: f32) -> Self {
+impl Editor {
+    pub fn new() -> Self {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
-        let mut buffer =
-            cosmic_text::Buffer::new(&mut font_system, Metrics::new(font_size, font_size));
-        // TODO: dynamic
-        buffer.set_size(&mut font_system, 200.0, font_size);
+        // Font size is set later, set it to some default for now
+        let buffer = cosmic_text::Buffer::new(&mut font_system, Metrics::new(18.0, 18.0));
         let mut editor = cosmic_text::Editor::new(buffer);
         editor.with_buffer_mut(|buf| {
-            // Intial text must be set
-            buf.set_text(&mut font_system, "", DEFAULT_ATTRS, Shaping::Basic);
+            buf.set_text(&mut font_system, "", DEFAULT_ATTRS, Shaping::Basic); // Intial text must be set
         });
-        Self { editor }
+        Self {
+            inner: Rc::new(RefCell::new(editor)),
+        }
     }
 
     pub fn text(&self) -> String {
-        self.editor
+        self.inner
+            .borrow()
             .with_buffer(|buf| buf.lines[0].text().to_string())
     }
 
@@ -120,27 +122,46 @@ impl TextEditor {
     pub fn perform_action(&mut self, action: cosmic_text::Action) {
         log::info!("Action: {:?}", action);
         let mut font_system = FONT_SYSTEM.lock().unwrap();
-        self.editor.action(&mut font_system, action);
-        self.editor.shape_as_needed(&mut font_system, false);
+        let mut editor = self.inner.borrow_mut();
+        editor.action(&mut font_system, action);
+        editor.shape_as_needed(&mut font_system, false);
     }
 }
 
-impl Component for TextEditor {
-    fn layout(&mut self, width: u64, height: u64) {
-        self.editor.with_buffer_mut(|buf| {
-            buf.set_size(
+pub struct TextEditor {
+    editor: Editor,
+}
+
+impl TextEditor {
+    pub fn new(editor: Editor, font_size: f32) -> Self {
+        editor.inner.borrow_mut().with_buffer_mut(|buf| {
+            buf.set_metrics(
                 &mut FONT_SYSTEM.lock().unwrap(),
-                width as f32,
-                height as f32,
+                Metrics::new(font_size, font_size),
             );
         });
+        Self { editor }
+    }
+}
+
+impl Widget for TextEditor {
+    fn layout(&mut self, bounds: UVec2) -> UVec2 {
+        self.editor.inner.borrow_mut().with_buffer_mut(|buf| {
+            buf.set_size(
+                &mut FONT_SYSTEM.lock().unwrap(),
+                bounds.x as f32,
+                bounds.y as f32,
+            );
+        });
+        bounds
     }
 
-    fn render(&self, bounds: Rect, pixmap: &mut PixmapMut) {
+    fn render(&self, pos: UVec2, pixmap: &mut PixmapMut) {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
         let mut swash_cache = SWASH_CACHE.lock().unwrap();
-        if self.editor.redraw() {
-            self.editor.draw(
+        let editor = self.editor.inner.borrow_mut();
+        if editor.redraw() {
+            editor.draw(
                 &mut font_system,
                 &mut swash_cache,
                 cosmic_text::Color::rgb(0xFF, 0xFF, 0xFF),
@@ -150,8 +171,8 @@ impl Component for TextEditor {
                     fill_rect(
                         pixmap,
                         Rect::new(
-                            bounds.x + x.max(0) as u64,
-                            bounds.y + y.max(0) as u64,
+                            pos.x + x.max(0) as u64,
+                            pos.y + y.max(0) as u64,
                             w as u64,
                             h as u64,
                         ),

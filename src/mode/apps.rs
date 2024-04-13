@@ -32,7 +32,7 @@ fn load_desktop_files() -> Vec<Item> {
         Some(OsStr::new("desktop")) == path.extension()
     });
     log::info!(
-        "Found {} desktop files in {:?}",
+        "found {} desktop files in {:?}",
         desktop_files.len(),
         timer.elapsed()
     );
@@ -43,7 +43,7 @@ fn load_desktop_files() -> Vec<Item> {
         .filter_map(|path| read_desktop_file(&path))
         .collect::<Vec<Item>>();
     log::info!(
-        "Parsed {} desktop files in {:?}",
+        "parsed {} desktop files in {:?}",
         items.len(),
         timer.elapsed()
     );
@@ -78,7 +78,7 @@ fn read_desktop_file(path: &Path) -> Option<Item> {
     let exec_args = ExecKey::parse(&exec_str?);
     let exec = exec_args.expand();
 
-    log::debug!("Desktop file: {} -> {}", name, exec);
+    log::debug!("read desktop file: {} -> {}", name, exec);
     Some(Item::Exec { name, exec })
 }
 

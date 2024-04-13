@@ -3,7 +3,10 @@ use crate::{
     item::Item,
     mode::Mode,
     render::Renderer,
-    ui::{column, container, Editor, Element, Length, SizedBox, TextEditor, UVec2, Widget},
+    ui::{
+        column, container, text_box, DynamicList, Editor, Element, Length, ListContent, SizedBox,
+        TextEditor, UVec2, Widget,
+    },
 };
 use cosmic_text::Action;
 use std::{sync::Arc, time::Instant};
@@ -21,24 +24,21 @@ pub struct App {
     config: Config,
 }
 
-fn build_ui(config: &Config, editor: Editor) -> Element {
+fn build_ui(mode_name: &str, config: &Config, editor: Editor, content: ListContent) -> Element {
     let editor = TextEditor::new(editor, config.font_size);
-    let editor_container = container(editor)
-        .padding(4)
-        .height(Length::Fixed(200))
-        .bg(config.colors.background_second);
-    let root = container(column(vec![
-        editor_container.into_element(),
-        SizedBox::new()
-            .color(config.colors.primary)
-            .width(Length::Fixed(50))
-            .height(Length::Fixed(100))
+    let editor_container = container(editor).height(Length::Fixed(config.font_size as u64));
+    let root = container(column([
+        text_box(mode_name, config.font_size),
+        container(editor_container)
+            .padding(4)
+            .bg(config.colors.background_second)
             .into_element(),
-        SizedBox::new()
-            .color(config.colors.secondary)
-            .width(Length::Fixed(100))
-            .height(Length::Fixed(100))
+        SizedBox::new() // Horizontal line
+            .color(config.colors.foreground)
+            .width(Length::Fill)
+            .height(Length::Fixed(2))
             .into_element(),
+        DynamicList::new(content, 20).spacing(8).into_element(),
     ]))
     .padding(32)
     .bg(config.colors.background)
@@ -49,7 +49,6 @@ fn build_ui(config: &Config, editor: Editor) -> Element {
 
 impl App {
     pub fn new(mode: Box<dyn Mode>) -> Self {
-        log::info!("Creating app");
         let config = Config::default();
         Self {
             mode,
@@ -59,36 +58,8 @@ impl App {
         }
     }
 
-    // fn render_matches(&self, outer: Rect) -> Vec<Component> {
-    //     let mut components = Vec::new();
-    //     // TODO: Don't render too much
-    //     for (i, item) in self.matches.iter().enumerate().take(20) {
-    //         let bg_color = if i == self.selected {
-    //             self.config.colors.primary
-    //         } else {
-    //             self.config.colors.background_second
-    //         };
-    //         let y = outer.y + i as u64 * FONT_SIZE;
-    //         if y > outer.height {
-    //             break;
-    //         }
-    //         components.push(Component::Container(Container::new(
-    //             Rect::new(outer.x, y, outer.width, FONT_SIZE),
-    //             bg_color,
-    //         )));
-    //         components.push(Component::Text(
-    //             Text::new(
-    //                 Rect::new(outer.x, y, outer.width, FONT_SIZE),
-    //                 FONT_SIZE as f32,
-    //             )
-    //             .with_text(&item.display()),
-    //         ));
-    //     }
-    //     components
-    // }
-
     pub fn run(&mut self) {
-        log::info!("Starting app");
+        log::info!("starting application");
         let event_loop = EventLoop::new().unwrap();
         event_loop.set_control_flow(ControlFlow::Wait);
         let window = Arc::new(
@@ -105,13 +76,19 @@ impl App {
         self.matches = self.mode.matches(""); // initial matches
 
         let mut editor = Editor::new();
-        let mut root = build_ui(&self.config, editor.clone());
+        let mut list_content = ListContent::new();
+        let mut root = build_ui(
+            self.mode.name(),
+            &self.config,
+            editor.clone(),
+            list_content.clone(),
+        );
         event_loop
             .run(move |event, elwt| match event {
                 Event::WindowEvent { event, .. } => match event {
                     WindowEvent::CloseRequested => elwt.exit(),
                     WindowEvent::Resized(e) => {
-                        log::info!("resize window to {}x{}", e.width, e.height);
+                        log::debug!("resize window to {}x{}", e.width, e.height);
                         root.layout(UVec2::new(e.width as u64, e.height as u64));
                         window.request_redraw();
                     }
@@ -119,7 +96,7 @@ impl App {
                         let time = Instant::now();
 
                         renderer.draw(&root);
-                        log::info!("Rendered in {:?}", time.elapsed());
+                        log::info!("rendered in {:?}", time.elapsed());
                     }
                     WindowEvent::KeyboardInput { event, .. } => {
                         let mut is_dirty = false;
@@ -133,10 +110,12 @@ impl App {
                             } else if event.physical_key == PhysicalKey::Code(KeyCode::ArrowDown) {
                                 if self.selected < self.matches.len() - 1 {
                                     self.selected += 1;
+                                    log::info!("selected: {}", self.selected);
                                     is_dirty = true;
                                 }
                             } else if event.physical_key == PhysicalKey::Code(KeyCode::ArrowUp) {
                                 self.selected = self.selected.saturating_sub(1);
+                                log::info!("selected: {}", self.selected);
                                 is_dirty = true;
                             } else {
                                 // Editor input
@@ -151,6 +130,17 @@ impl App {
                         }
                         if is_dirty {
                             self.matches = self.mode.matches(&editor.text());
+                            list_content.update(self.matches.iter().enumerate().map(
+                                |(i, item)| {
+                                    if i == self.selected {
+                                        container(text_box(&item.display(), 32.0))
+                                            .bg(self.config.colors.primary)
+                                            .into_element()
+                                    } else {
+                                        text_box(&item.display(), 16.0)
+                                    }
+                                },
+                            ));
                             window.request_redraw();
                         }
                     }

@@ -61,7 +61,7 @@ impl Widget for Container {
             Length::Fixed(height) => height,
             Length::Fill => bounds.y,
         };
-        log::debug!("Container layout: {}x{}", layout_width, layout_height);
+        log::debug!("container layout: {}x{}", layout_width, layout_height);
         self.layout_size = UVec2::new(layout_width, layout_height);
         self.layout_size
     }

@@ -1,10 +1,12 @@
-mod column;
 mod container;
+mod flex;
+mod list;
 mod text;
 
-pub use column::*;
 pub use container::*;
+pub use flex::*;
 pub use text::*;
+pub use list::*;
 
 #[derive(Clone, Copy, Debug)]
 pub struct UVec2 {
@@ -37,8 +39,8 @@ impl std::ops::Sub for UVec2 {
 
     fn sub(self, rhs: Self) -> Self::Output {
         Self {
-            x: self.x - rhs.x,
-            y: self.y - rhs.y,
+            x: self.x.saturating_sub(rhs.x),
+            y: self.y.saturating_sub(rhs.y),
         }
     }
 }
@@ -171,7 +173,7 @@ impl Widget for SizedBox {
             Length::Fill => bounds.y,
         };
         self.layout_size = UVec2::new(layout_width, layout_height);
-        log::debug!("SizedBox layout: {}x{}", layout_width, layout_height);
+        log::debug!("sized box layout: {}x{}", layout_width, layout_height);
         self.layout_size
     }
 

@@ -1,4 +1,4 @@
-use super::{Rect, UVec2, Widget};
+use super::{container, Element, Length, Rect, UVec2, Widget};
 use crate::render::fill_rect;
 
 use cosmic_text::{
@@ -23,8 +23,14 @@ const DEFAULT_ATTRS: Attrs = Attrs {
     cache_key_flags: CacheKeyFlags::empty(),
 };
 
+const DEFAULT_FONT_SIZE: f32 = 18.0;
+
 pub struct Text {
     buffer: cosmic_text::Buffer,
+}
+
+pub fn text(text: &str) -> Text {
+    Text::new(DEFAULT_FONT_SIZE).with_text(text)
 }
 
 impl Text {
@@ -82,6 +88,14 @@ impl Widget for Text {
     }
 }
 
+pub fn text_box(text: &str, font_size: f32) -> Element {
+    container(Text::new(font_size).with_text(text))
+        .width(Length::Fill)
+        .height(Length::Fixed(font_size as u64))
+        .padding(4) // TODO: Configurable text box builder
+        .into_element()
+}
+
 #[derive(Clone)]
 pub struct Editor {
     inner: Rc<RefCell<cosmic_text::Editor<'static>>>,
@@ -90,8 +104,10 @@ pub struct Editor {
 impl Editor {
     pub fn new() -> Self {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
-        // Font size is set later, set it to some default for now
-        let buffer = cosmic_text::Buffer::new(&mut font_system, Metrics::new(18.0, 18.0));
+        let buffer = cosmic_text::Buffer::new(
+            &mut font_system,
+            Metrics::new(DEFAULT_FONT_SIZE, DEFAULT_FONT_SIZE),
+        );
         let mut editor = cosmic_text::Editor::new(buffer);
         editor.with_buffer_mut(|buf| {
             buf.set_text(&mut font_system, "", DEFAULT_ATTRS, Shaping::Basic); // Intial text must be set
@@ -120,7 +136,7 @@ impl Editor {
     }
 
     pub fn perform_action(&mut self, action: cosmic_text::Action) {
-        log::info!("Action: {:?}", action);
+        log::debug!("edit action: {:?}", action);
         let mut font_system = FONT_SYSTEM.lock().unwrap();
         let mut editor = self.inner.borrow_mut();
         editor.action(&mut font_system, action);

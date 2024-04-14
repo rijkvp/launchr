@@ -1,18 +1,22 @@
-use std::{cell::RefCell, rc::Rc};
-
 use super::{Element, UVec2, Widget};
-
+use std::{cell::RefCell, rc::Rc};
 use tiny_skia::PixmapMut;
+
+#[derive(Default)]
+struct ListItems {
+    items: Vec<Element>,
+    dirty: bool,
+}
 
 #[derive(Clone)]
 pub struct ListContent {
-    items: Rc<RefCell<Vec<Element>>>,
+    inner: Rc<RefCell<ListItems>>,
 }
 
 impl ListContent {
     pub fn new() -> Self {
         Self {
-            items: Rc::new(RefCell::new(Vec::new())),
+            inner: Rc::new(RefCell::new(ListItems::default())),
         }
     }
 
@@ -22,9 +26,10 @@ impl ListContent {
         E: Into<Element>,
     {
         let mut new_items: Vec<Element> = new_items.into_iter().map(|c| c.into()).collect();
-        let mut items = self.items.borrow_mut();
-        items.clear();
-        items.append(&mut new_items);
+        let mut inner = self.inner.borrow_mut();
+        inner.items.clear();
+        inner.items.append(&mut new_items);
+        inner.dirty = true;
     }
 }
 
@@ -55,23 +60,25 @@ impl DynamicList {
 
 impl Widget for DynamicList {
     fn layout(&mut self, bounds: UVec2) -> UVec2 {
-        let mut items = self.content.items.borrow_mut();
+        let mut inner = self.content.inner.borrow_mut();
         let max_items = (bounds.y / (self.item_height + self.spacing)) as usize;
-        // only relayout childs if width  has changed
-        if bounds.x != self.current_width || max_items > self.max_items {
+        // only relayout childs if width  has changed or items have changed
+        if bounds.x != self.current_width || max_items > self.max_items || inner.dirty {
             log::debug!(
                 "relayout list (max. {} items): {}x{}",
                 max_items,
                 bounds.x,
                 bounds.y
             );
-            self.current_width = bounds.x;
 
             // Bounds for each child is constant
             let child_bounds = UVec2::new(bounds.x, self.item_height);
-            for child in items.iter_mut().take(max_items as usize) {
+            for child in inner.items.iter_mut().take(max_items as usize) {
                 child.layout(child_bounds);
             }
+
+            self.current_width = bounds.x;
+            inner.dirty = false;
         }
         self.max_items = max_items;
 
@@ -81,8 +88,9 @@ impl Widget for DynamicList {
     fn render(&self, pos: UVec2, pixmap: &mut PixmapMut) {
         for (i, child) in self
             .content
-            .items
+            .inner
             .borrow()
+            .items
             .iter()
             .take(self.max_items)
             .enumerate()

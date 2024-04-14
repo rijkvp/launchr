@@ -33,7 +33,7 @@ fn build_ui(mode_name: &str, config: &Config, editor: Editor, content: ListConte
             .padding(4)
             .bg(config.colors.background_second)
             .into_element(),
-        SizedBox::new() // Horizontal line
+        SizedBox::new()
             .color(config.colors.foreground)
             .width(Length::Fill)
             .height(Length::Fixed(2))
@@ -133,13 +133,20 @@ impl App {
                             list_content.update(self.matches.iter().enumerate().map(
                                 |(i, item)| {
                                     if i == self.selected {
-                                        container(text_box(&item.display(), 32.0))
+                                        container(text_box(&item.display(), 16.0))
                                             .bg(self.config.colors.primary)
                                             .into_element()
                                     } else {
-                                        text_box(&item.display(), 16.0)
+                                        container(text_box(&item.display(), 16.0))
+                                            .bg(self.config.colors.background_second)
+                                            .into_element()
                                     }
                                 },
+                            ));
+                            let window_size = window.inner_size();
+                            root.layout(UVec2::new(
+                                window_size.width as u64,
+                                window_size.height as u64,
                             ));
                             window.request_redraw();
                         }

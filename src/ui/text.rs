@@ -36,10 +36,7 @@ pub fn text(text: &str) -> Text {
 impl Text {
     pub fn new(font_size: f32) -> Self {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
-        let mut buffer =
-            cosmic_text::Buffer::new(&mut font_system, Metrics::new(font_size, font_size));
-        // TODO: dynamic
-        buffer.set_size(&mut font_system, 200.0, font_size);
+        let buffer = cosmic_text::Buffer::new(&mut font_system, Metrics::new(font_size, font_size));
         Self { buffer }
     }
 
@@ -92,7 +89,6 @@ pub fn text_box(text: &str, font_size: f32) -> Element {
     container(Text::new(font_size).with_text(text))
         .width(Length::Fill)
         .height(Length::Fixed(font_size as u64))
-        .padding(4) // TODO: Configurable text box builder
         .into_element()
 }
 

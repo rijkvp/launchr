@@ -6,6 +6,17 @@ pub struct Exec {
     pub args: Vec<String>,
 }
 
+impl Exec {
+    pub fn command(&self) -> String {
+        let mut cmd = String::from(&self.program);
+        if self.args.len() > 0 {
+            cmd.push(' ');
+            cmd.push_str(&self.args.join(" "));
+        }
+        cmd
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Item {
     File(PathBuf),
@@ -47,13 +58,10 @@ impl Item {
             }
             Item::Exec { name: _, exec } => {
                 // Execute the command as child process
-                log::info!(
-                    "executing: '{}' with args {}",
-                    exec.program,
-                    exec.args.join(" ")
-                );
+                let cmd = exec.command();
+                log::info!("executing: '{cmd}'");
                 if let Err(e) = Command::new(&exec.program).args(&exec.args).spawn() {
-                    eprintln!("Failed to run '{}': {}", exec.program, e);
+                    eprintln!("Failed to run '{cmd}': {e}");
                 }
             }
             Item::Selection(_) => {

@@ -1,4 +1,5 @@
 use super::Mode;
+use crate::item::Exec;
 use crate::{item::Item, util};
 use rayon::prelude::*;
 use std::io::BufRead;
@@ -78,7 +79,7 @@ fn read_desktop_file(path: &Path) -> Option<Item> {
     let exec_args = ExecKey::parse(&exec_str?);
     let exec = exec_args.expand();
 
-    log::debug!("read desktop file: {} -> {}", name, exec);
+    log::debug!("read desktop file: {} -> {:?}", name, exec);
     Some(Item::Exec { name, exec })
 }
 
@@ -97,17 +98,19 @@ impl ExecKey {
     }
 
     /// Expand field codes without data
-    fn expand(&self) -> String {
-        let mut result = String::new();
-        for (i, arg) in self.0.iter().enumerate() {
-            if let ExecArg::Arg(s) = arg {
-                result.push_str(&s);
-                if i < self.0.len() - 1 {
-                    result.push(' ');
-                }
-            }
+    fn expand(self) -> Exec {
+        let parts = self
+            .0
+            .into_iter()
+            .filter_map(|arg| match arg {
+                ExecArg::Arg(s) => Some(s),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        Exec {
+            program: parts[0].clone(),
+            args: parts[1..].to_vec(),
         }
-        result
     }
 }
 

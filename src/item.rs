@@ -1,9 +1,15 @@
 use std::{path::PathBuf, process::Command};
 
 #[derive(Debug, Clone)]
+pub struct Exec {
+    pub program: String,
+    pub args: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
 pub enum Item {
     File(PathBuf),
-    Exec { name: String, exec: String },
+    Exec { name: String, exec: Exec },
     Selection(String),
 }
 
@@ -40,10 +46,14 @@ impl Item {
                 }
             }
             Item::Exec { name: _, exec } => {
-                // Execute the command
-                log::info!("executing: '{exec}'");
-                if let Err(e) = Command::new(&exec).spawn() {
-                    eprintln!("Failed to run {}: {}", exec, e);
+                // Execute the command as child process
+                log::info!(
+                    "executing: '{}' with args {}",
+                    exec.program,
+                    exec.args.join(" ")
+                );
+                if let Err(e) = Command::new(&exec.program).args(&exec.args).spawn() {
+                    eprintln!("Failed to run '{}': {}", exec.program, e);
                 }
             }
             Item::Selection(_) => {

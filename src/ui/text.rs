@@ -1,5 +1,6 @@
+use crate::render::RenderBuffer;
+
 use super::{container, Element, Length, Rect, UVec2, Widget};
-use crate::render::fill_rect;
 
 use cosmic_text::{
     Action, Attrs, CacheKeyFlags, Edit, Family, FontSystem, Metrics, Motion, Shaping, Stretch,
@@ -7,7 +8,6 @@ use cosmic_text::{
 };
 use once_cell::sync::Lazy;
 use std::{cell::RefCell, rc::Rc, sync::Mutex};
-use tiny_skia::PixmapMut;
 use winit::keyboard::KeyCode;
 
 static FONT_SYSTEM: Lazy<Mutex<FontSystem>> = Lazy::new(|| Mutex::new(FontSystem::new()));
@@ -62,23 +62,23 @@ impl Widget for Text {
         bounds
     }
 
-    fn render(&self, pos: UVec2, pixmap: &mut PixmapMut) {
+    fn render(&self, pos: UVec2, buf: &mut RenderBuffer) {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
         let mut swash_cache = SWASH_CACHE.lock().unwrap();
+        // swash_cache.get_image
         self.buffer.draw(
             &mut font_system,
             &mut swash_cache,
             cosmic_text::Color::rgb(0xFF, 0xFF, 0xFF),
             |x, y, w, h, color| {
-                fill_rect(
-                    pixmap,
+                buf.fill_rect(
                     Rect::new(
                         pos.x + x.max(0) as u64, // use max(0) to prevent underflow
                         pos.y + y.max(0) as u64,
                         w as u64,
                         h as u64,
                     ),
-                    color,
+                    color.into(),
                 )
             },
         );
@@ -168,7 +168,7 @@ impl Widget for TextEditor {
         bounds
     }
 
-    fn render(&self, pos: UVec2, pixmap: &mut PixmapMut) {
+    fn render(&self, pos: UVec2, buf: &mut RenderBuffer) {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
         let mut swash_cache = SWASH_CACHE.lock().unwrap();
         let editor = self.editor.inner.borrow_mut();
@@ -180,15 +180,14 @@ impl Widget for TextEditor {
                 cosmic_text::Color::rgb(0xFF, 0xFF, 0xFF),
                 cosmic_text::Color::rgb(0xAA, 0xAA, 0xFF),
                 |x, y, w, h, color| {
-                    fill_rect(
-                        pixmap,
+                    buf.fill_rect(
                         Rect::new(
                             pos.x + x.max(0) as u64,
                             pos.y + y.max(0) as u64,
                             w as u64,
                             h as u64,
                         ),
-                        color,
+                        color.into(),
                     )
                 },
             );

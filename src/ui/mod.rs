@@ -5,8 +5,10 @@ mod text;
 
 pub use container::*;
 pub use flex::*;
-pub use text::*;
 pub use list::*;
+pub use text::*;
+
+use crate::render::{Color, RenderBuffer};
 
 #[derive(Clone, Copy, Debug)]
 pub struct UVec2 {
@@ -64,20 +66,6 @@ impl Rect {
     }
 }
 
-impl Into<tiny_skia::Rect> for Rect {
-    fn into(self) -> tiny_skia::Rect {
-        tiny_skia::Rect::from_xywh(
-            self.pos.x as f32,
-            self.pos.y as f32,
-            self.size.x as f32,
-            self.size.y as f32,
-        )
-        .unwrap()
-    }
-}
-
-pub type Color = tiny_skia::Color;
-
 #[derive(Debug, Clone, Copy)]
 pub enum Length {
     Auto,
@@ -89,8 +77,8 @@ pub enum Length {
 pub trait Widget {
     /// Layout the component and its children, returning the size of the component
     fn layout(&mut self, bounds: UVec2) -> UVec2;
-    /// Renders the component to the pixmap.
-    fn render(&self, pos: UVec2, pixmap: &mut tiny_skia::PixmapMut);
+    /// Renders the component to the buffer
+    fn render(&self, pos: UVec2, buf: &mut RenderBuffer);
     /// Converts the widget into an element
     fn into_element(self) -> Element
     where
@@ -118,8 +106,8 @@ impl Widget for Element {
         self.widget.layout(bounds)
     }
 
-    fn render(&self, pos: UVec2, pixmap: &mut tiny_skia::PixmapMut) {
-        self.widget.render(pos, pixmap);
+    fn render(&self, pos: UVec2, buf: &mut RenderBuffer) {
+        self.widget.render(pos, buf);
     }
 
     fn into_element(self) -> Element {
@@ -177,16 +165,9 @@ impl Widget for SizedBox {
         self.layout_size
     }
 
-    fn render(&self, pos: UVec2, pixmap: &mut tiny_skia::PixmapMut) {
+    fn render(&self, pos: UVec2, buf: &mut RenderBuffer) {
         if let Some(color) = self.color {
-            let mut paint = tiny_skia::Paint::default();
-            paint.set_color(color);
-            pixmap.fill_rect(
-                Rect::from_pos_size(pos, self.layout_size).into(),
-                &paint,
-                tiny_skia::Transform::identity(),
-                None,
-            );
+            buf.fill_rect(Rect::from_pos_size(pos, self.layout_size), color);
         }
     }
 }

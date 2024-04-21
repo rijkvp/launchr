@@ -1,6 +1,6 @@
-use super::{Element, Length, UVec2, Widget};
+use crate::render::RenderBuffer;
 
-use tiny_skia::PixmapMut;
+use super::{Element, Length, UVec2, Widget};
 
 pub fn column<C, E>(children: C) -> Flex
 where
@@ -105,7 +105,7 @@ impl Widget for Flex {
         self.layout_size
     }
 
-    fn render(&self, pos: UVec2, pixmap: &mut PixmapMut) {
+    fn render(&self, pos: UVec2, pixmap: &mut RenderBuffer) {
         for (child, offset) in self.children.iter().zip(self.child_offsets.iter()) {
             let offset = match self.direction {
                 FlexDirection::Row => UVec2::new(*offset, 0),

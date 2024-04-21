@@ -1,6 +1,6 @@
-use super::{Color, Element, Length, Rect, UVec2, Widget};
+use crate::render::RenderBuffer;
 
-use tiny_skia::{PixmapMut, Transform};
+use super::{Color, Element, Length, Rect, UVec2, Widget};
 
 pub fn container(child: impl Widget + 'static) -> Container {
     Container {
@@ -66,18 +66,11 @@ impl Widget for Container {
         self.layout_size
     }
 
-    fn render(&self, pos: UVec2, pixmap: &mut PixmapMut) {
+    fn render(&self, pos: UVec2, buf: &mut RenderBuffer) {
         if let Some(bg_color) = self.bg_color {
-            let mut paint = tiny_skia::Paint::default();
-            paint.set_color(bg_color);
-            pixmap.fill_rect(
-                Rect::from_pos_size(pos, self.layout_size).into(),
-                &paint,
-                Transform::identity(),
-                None,
-            );
+            buf.fill_rect(Rect::from_pos_size(pos, self.layout_size), bg_color);
         }
         self.child
-            .render(pos + UVec2::new(self.padding, self.padding), pixmap);
+            .render(pos + UVec2::new(self.padding, self.padding), buf);
     }
 }

@@ -12,7 +12,7 @@
       {
         devShells.default = mkShell
           rec {
-            nativeBuildInputs = [ rustc cargo clippy pkg-config ];
+            nativeBuildInputs = [ rustc cargo rustfmt  clippy cargo-flamegraph pkg-config ];
             buildInputs = [
               fontconfig
               wayland

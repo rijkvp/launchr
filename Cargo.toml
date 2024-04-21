@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tiny-skia = "0.11"
 winit = "0.29"
 softbuffer = "0.4"
 cosmic-text = { version = "0.11.2", features = ["shape-run-cache"] }
@@ -28,8 +27,12 @@ lto = true
 codegen-units = 1
 
 [dev-dependencies]
-divan = "0.1"
+criterion = { version = "0.4", features = ["html_reports"] }
 
 [[bench]]
 name = "files"
+harness = false
+
+[[bench]]
+name = "render"
 harness = false

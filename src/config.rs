@@ -1,4 +1,4 @@
-use tiny_skia::Color;
+use crate::render::Color;
 
 pub struct Config {
     pub font_size: f32,

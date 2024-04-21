@@ -1,6 +1,7 @@
+use crate::render::RenderBuffer;
+
 use super::{Element, UVec2, Widget};
 use std::{cell::RefCell, rc::Rc};
-use tiny_skia::PixmapMut;
 
 #[derive(Default)]
 struct ListItems {
@@ -85,7 +86,7 @@ impl Widget for DynamicList {
         bounds // always fill whole area
     }
 
-    fn render(&self, pos: UVec2, pixmap: &mut PixmapMut) {
+    fn render(&self, pos: UVec2, buf: &mut RenderBuffer) {
         for (i, child) in self
             .content
             .inner
@@ -96,7 +97,7 @@ impl Widget for DynamicList {
             .enumerate()
         {
             let offset = UVec2::new(0, i as u64 * (self.item_height + self.spacing));
-            child.render(pos + offset, pixmap);
+            child.render(pos + offset, buf);
         }
     }
 }

@@ -14,7 +14,7 @@
         pkgs = import nixpkgs { inherit system; };
         craneLib = crane.mkLib pkgs;
 
-        commonArgs = rec {
+        commonArgs = {
           src = craneLib.cleanCargoSource ./.;
           strictDeps = true;
 
@@ -26,14 +26,23 @@
             xorg.libXcursor
           ];
           nativeBuildInputs = with pkgs; [ clippy pkg-config ];
-          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath buildInputs;
         };
+
+        rpath = with pkgs; lib.makeLibraryPath [
+         fontconfig
+         wayland
+         libxkbcommon
+         xorg.libX11
+         xorg.libXcursor
+        ];
 
         launcher = craneLib.buildPackage (commonArgs // {
           cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+          postFixup = ''
+            patchelf $out/bin/launcher --add-rpath ${rpath}
+          '';
         });
       in
-      with pkgs;
       {
         checks = { inherit launcher; };
 
@@ -47,8 +56,10 @@
           checks = self.checks.${system};
 
           packages = [
-            cargo-flamegraph
+            pkgs.cargo-flamegraph
           ];
+
+          LD_LIBRARY_PATH = rpath;
         };
       });
 }

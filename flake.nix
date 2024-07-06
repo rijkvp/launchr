@@ -55,8 +55,9 @@
         devShells.default = craneLib.devShell {
           checks = self.checks.${system};
 
-          packages = [
-            pkgs.cargo-flamegraph
+          packages = with pkgs; [
+            cargo-flamegraph
+            cargo-outdated
           ];
 
           LD_LIBRARY_PATH = rpath;

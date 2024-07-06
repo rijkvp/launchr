@@ -153,6 +153,7 @@ impl Renderer {
 
         root.render(UVec2::zero(), &mut render_buffer);
 
+        self.window.pre_present_notify();
         surface_buffer.present().unwrap();
     }
 }

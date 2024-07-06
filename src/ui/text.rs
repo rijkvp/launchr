@@ -21,6 +21,7 @@ const DEFAULT_ATTRS: Attrs = Attrs {
     weight: Weight::NORMAL,
     metadata: 0,
     cache_key_flags: CacheKeyFlags::empty(),
+    metrics_opt: None,
 };
 
 const DEFAULT_FONT_SIZE: f32 = 18.0;
@@ -56,8 +57,8 @@ impl Widget for Text {
     fn layout(&mut self, bounds: UVec2) -> UVec2 {
         self.buffer.set_size(
             &mut FONT_SYSTEM.lock().unwrap(),
-            bounds.x as f32,
-            bounds.y as f32,
+            Some(bounds.x as f32),
+            Some(bounds.y as f32),
         );
         bounds
     }
@@ -161,8 +162,8 @@ impl Widget for TextEditor {
         self.editor.inner.borrow_mut().with_buffer_mut(|buf| {
             buf.set_size(
                 &mut FONT_SYSTEM.lock().unwrap(),
-                bounds.x as f32,
-                bounds.y as f32,
+                Some(bounds.x as f32),
+                Some(bounds.y as f32),
             );
         });
         bounds
@@ -179,6 +180,7 @@ impl Widget for TextEditor {
                 cosmic_text::Color::rgb(0xFF, 0xFF, 0xFF),
                 cosmic_text::Color::rgb(0xFF, 0xFF, 0xFF),
                 cosmic_text::Color::rgb(0xAA, 0xAA, 0xFF),
+                cosmic_text::Color::rgb(0xFF, 0xFF, 0xFF),
                 |x, y, w, h, color| {
                     buf.fill_rect(
                         Rect::new(

@@ -1,107 +1,38 @@
 use crate::{
     config::Config,
     item::Item,
-    mode::Mode,
+    mode::{AppsMode, DmenuMode, FileMode, Mode, RunMode},
     render::Renderer,
     ui::{
         column, container, text_box, DynamicList, Editor, Element, Length, ListContent, SizedBox,
         TextEditor, UVec2, Widget,
-    },
+    }, winit_app::WinitApp,
 };
+use clap::Parser;
 use cosmic_text::Action;
-use std::{sync::Arc, time::Instant};
+use std::{
+    io::{self, Read},
+    sync::Arc,
+    time::Instant,
+};
 use winit::{
-    application::ApplicationHandler,
     event::{ElementState, KeyEvent, WindowEvent},
-    event_loop::{ControlFlow, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
     window::{Window, WindowLevel},
 };
 
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// dmenu mode
+    #[arg(short, long)]
+    dmenu: bool,
+    /// Mode to use
+    #[arg(short, long, default_value = "run")]
+    mode: String,
+}
+
 pub struct App {
-    starting: Option<Box<dyn Mode>>,
-    running: Option<RunningApp>,
-}
-
-impl App {
-    pub fn new(mode: Box<dyn Mode>) -> Self {
-        App {
-            starting: Some(mode),
-            running: None,
-        }
-    }
-
-    pub fn run(&mut self) {
-        log::info!("starting application");
-        let event_loop = EventLoop::new().unwrap();
-        event_loop.set_control_flow(ControlFlow::Wait);
-        event_loop.run_app(self).unwrap();
-    }
-}
-
-impl ApplicationHandler for App {
-    fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
-        if self.running.is_some() {
-            return;
-        }
-        if let Some(mode) = self.starting.take() {
-            let attributes = Window::default_attributes()
-                .with_title("Launcher")
-                .with_decorations(false)
-                .with_transparent(true)
-                .with_window_level(WindowLevel::AlwaysOnTop);
-            let window = event_loop.create_window(attributes).unwrap();
-            self.running = Some(RunningApp::new(window, mode));
-        }
-    }
-
-    fn window_event(
-        &mut self,
-        event_loop: &winit::event_loop::ActiveEventLoop,
-        _window_id: winit::window::WindowId,
-        event: WindowEvent,
-    ) {
-        let Some(running_app) = &mut self.running else {
-            return;
-        };
-        // TODO: Fix ungly code here
-        match event {
-            WindowEvent::CloseRequested => event_loop.exit(),
-            WindowEvent::Resized(e) => {
-                log::debug!("resize window to {}x{}", e.width, e.height);
-                running_app
-                    .root
-                    .layout(UVec2::new(e.width as u64, e.height as u64));
-                running_app.window.request_redraw();
-            }
-            WindowEvent::RedrawRequested => {
-                let time = Instant::now();
-
-                running_app.renderer.draw(&running_app.root);
-                log::info!("rendered in {:?}", time.elapsed());
-            }
-            WindowEvent::KeyboardInput { event, .. } => {
-                let is_dirty = running_app.input(event);
-                if is_dirty {
-                    running_app.update();
-                    running_app.window.request_redraw();
-                }
-            }
-            _ => {}
-        }
-    }
-
-    fn about_to_wait(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
-        let Some(ref running_app) = self.running else {
-            return;
-        };
-        if running_app.exit {
-            event_loop.exit();
-        }
-    }
-}
-
-pub struct RunningApp {
     mode: Box<dyn Mode>,
     window: Arc<Window>,
     renderer: Renderer,
@@ -114,16 +45,41 @@ pub struct RunningApp {
     editor: Editor,
 }
 
-impl RunningApp {
-    pub fn new(window: Window, mut mode: Box<dyn Mode>) -> RunningApp {
-        let window = Arc::new(window);
+impl WinitApp for App {
+    fn new(event_loop: &winit::event_loop::ActiveEventLoop) -> Self {
+        let args: Args = Args::parse();
+        let mut mode: Box<dyn Mode> = if args.dmenu {
+            let mut buffer = String::new();
+            io::stdin()
+                .read_to_string(&mut buffer)
+                .expect("Failed to read from stdin");
+            Box::new(DmenuMode::new(buffer))
+        } else {
+            match args.mode.as_str() {
+                "apps" => Box::new(AppsMode::load()),
+                "run" => Box::new(RunMode::load()),
+                "file" => Box::new(FileMode::new(dirs::home_dir().unwrap())),
+                other => {
+                    eprintln!("Unknown mode: {}", other);
+                    std::process::exit(1);
+                }
+            }
+        };
+
+        let attributes = Window::default_attributes()
+            .with_title("Launcher")
+            .with_decorations(false)
+            .with_transparent(true)
+            .with_window_level(WindowLevel::AlwaysOnTop);
+        let window = Arc::new(event_loop.create_window(attributes).unwrap());
+
         let config = Config::default();
         let matches = mode.matches(""); // initial matches
         let renderer = Renderer::from_window(window.clone());
         let editor = Editor::new();
         let list_content = ListContent::new();
         let root = build_ui(mode.name(), &config, editor.clone(), list_content.clone());
-        RunningApp {
+        App {
             window,
             mode,
             renderer,
@@ -137,7 +93,43 @@ impl RunningApp {
         }
     }
 
-    fn input(&mut self, event: KeyEvent) -> bool {
+    fn window_event(
+        &mut self,
+        event_loop: &winit::event_loop::ActiveEventLoop,
+        event: WindowEvent,
+    ) {
+        match event {
+            WindowEvent::CloseRequested => event_loop.exit(),
+            WindowEvent::Resized(e) => {
+                log::debug!("resize window to {}x{}", e.width, e.height);
+                self.root
+                    .layout(UVec2::new(e.width as u64, e.height as u64));
+                self.window.request_redraw();
+            }
+            WindowEvent::RedrawRequested => {
+                let time = Instant::now();
+
+                self.renderer.draw(&self.root);
+                log::info!("rendered in {:?}", time.elapsed());
+            }
+            WindowEvent::KeyboardInput { event, .. } => {
+                let is_dirty = self.key_input(event);
+                if is_dirty {
+                    self.update();
+                    self.window.request_redraw();
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn exit(&self) -> bool {
+        self.exit
+    }
+}
+
+impl App {
+    fn key_input(&mut self, event: KeyEvent) -> bool {
         let mut is_dirty = false;
         if event.state == ElementState::Pressed {
             if event.physical_key == PhysicalKey::Code(KeyCode::Escape) {

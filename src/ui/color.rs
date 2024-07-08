@@ -56,6 +56,8 @@ impl Color {
     }
 }
 
+/// Scales a color component by an alpha value
+/// Optimized to use no floating point operations
 #[inline]
 pub fn scale_u8(c: u8, a: u8) -> u8 {
     let p = u32::from(c) * u32::from(a) + 128;

@@ -7,7 +7,7 @@ use launcher::{
 const WIDTH: u32 = 1920;
 const HEIGHT: u32 = 1080;
 
-fn render_ui(draw_handle: &mut DrawHandle) {
+fn create_ui() -> Element {
     let mut elements = Vec::new();
     for _ in 0..29 {
         elements.push(
@@ -25,14 +25,19 @@ fn render_ui(draw_handle: &mut DrawHandle) {
         .into_element();
 
     root.layout(UVec2::new(WIDTH, HEIGHT));
+    root
+}
+
+fn render_ui(root: &Element, draw_handle: &mut DrawHandle) {
     root.render(UVec2::zero(), draw_handle);
 }
 
 fn bench_text_render(c: &mut Criterion) {
     let mut draw_handle: DrawHandle = DrawHandle::from(OnwedBuffer::new(WIDTH, HEIGHT));
+    let root = create_ui();
     c.bench_function("text_render", |b| {
         b.iter(|| {
-            render_ui(black_box(&mut draw_handle));
+            render_ui(&root, black_box(&mut draw_handle));
         });
     });
 }

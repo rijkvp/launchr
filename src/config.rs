@@ -1,4 +1,4 @@
-use crate::render::Color;
+use crate::ui::Color;
 
 pub struct Config {
     pub font_size: f32,

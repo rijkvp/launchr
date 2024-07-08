@@ -1,4 +1,4 @@
-use crate::render::RenderBuffer;
+use crate::render::DrawHandle;
 
 use super::{Element, Length, UVec2, Widget};
 
@@ -105,13 +105,13 @@ impl Widget for Flex {
         self.layout_size
     }
 
-    fn render(&self, pos: UVec2, pixmap: &mut RenderBuffer) {
+    fn render(&self, pos: UVec2, draw_handle: &mut Box<dyn DrawHandle>) {
         for (child, offset) in self.children.iter().zip(self.child_offsets.iter()) {
             let offset = match self.direction {
                 FlexDirection::Row => UVec2::new(*offset, 0),
                 FlexDirection::Column => UVec2::new(0, *offset),
             };
-            child.render(pos + offset, pixmap);
+            child.render(pos + offset, draw_handle);
         }
     }
 }

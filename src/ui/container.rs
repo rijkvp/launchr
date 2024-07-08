@@ -1,6 +1,5 @@
-use crate::render::RenderBuffer;
-
 use super::{Color, Element, Length, Rect, UVec2, Widget};
+use crate::render::DrawHandle;
 
 pub fn container(child: impl Widget + 'static) -> Container {
     Container {
@@ -66,11 +65,11 @@ impl Widget for Container {
         self.layout_size
     }
 
-    fn render(&self, pos: UVec2, buf: &mut RenderBuffer) {
+    fn render(&self, pos: UVec2, draw_handle: &mut Box<dyn DrawHandle>) {
         if let Some(bg_color) = self.bg_color {
-            buf.fill_rect(Rect::from_pos_size(pos, self.layout_size), bg_color);
+            draw_handle.draw_rect(Rect::from_pos_size(pos, self.layout_size), bg_color);
         }
         self.child
-            .render(pos + UVec2::new(self.padding, self.padding), buf);
+            .render(pos + UVec2::new(self.padding, self.padding), draw_handle);
     }
 }

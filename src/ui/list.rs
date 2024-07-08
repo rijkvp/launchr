@@ -1,4 +1,4 @@
-use crate::render::RenderBuffer;
+use crate::render::DrawHandle;
 
 use super::{Element, UVec2, Widget};
 use std::{cell::RefCell, rc::Rc};
@@ -86,7 +86,7 @@ impl Widget for DynamicList {
         bounds // always fill whole area
     }
 
-    fn render(&self, pos: UVec2, buf: &mut RenderBuffer) {
+    fn render(&self, pos: UVec2, draw_handle: &mut Box<dyn DrawHandle>) {
         for (i, child) in self
             .content
             .inner
@@ -97,7 +97,7 @@ impl Widget for DynamicList {
             .enumerate()
         {
             let offset = UVec2::new(0, i as u64 * (self.item_height + self.spacing));
-            child.render(pos + offset, buf);
+            child.render(pos + offset, draw_handle);
         }
     }
 }

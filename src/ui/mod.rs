@@ -1,14 +1,16 @@
+mod color;
 mod container;
 mod flex;
 mod list;
 mod text;
 
+pub use color::*;
 pub use container::*;
 pub use flex::*;
 pub use list::*;
 pub use text::*;
 
-use crate::render::{Color, RenderBuffer};
+use crate::render::DrawHandle;
 
 #[derive(Clone, Copy, Debug)]
 pub struct UVec2 {
@@ -78,7 +80,7 @@ pub trait Widget {
     /// Layout the component and its children, returning the size of the component
     fn layout(&mut self, bounds: UVec2) -> UVec2;
     /// Renders the component to the buffer
-    fn render(&self, pos: UVec2, buf: &mut RenderBuffer);
+    fn render(&self, pos: UVec2, draw_handle: &mut Box<dyn DrawHandle>);
     /// Converts the widget into an element
     fn into_element(self) -> Element
     where
@@ -106,8 +108,8 @@ impl Widget for Element {
         self.widget.layout(bounds)
     }
 
-    fn render(&self, pos: UVec2, buf: &mut RenderBuffer) {
-        self.widget.render(pos, buf);
+    fn render(&self, pos: UVec2, draw_handle: &mut Box<dyn DrawHandle>) {
+        self.widget.render(pos, draw_handle)
     }
 
     fn into_element(self) -> Element {
@@ -165,9 +167,12 @@ impl Widget for SizedBox {
         self.layout_size
     }
 
-    fn render(&self, pos: UVec2, buf: &mut RenderBuffer) {
+    fn render(&self, pos: UVec2, draw_handle: &mut Box<dyn DrawHandle>) {
         if let Some(color) = self.color {
-            buf.fill_rect(Rect::from_pos_size(pos, self.layout_size), color);
+            draw_handle.draw_rect(
+                Rect::from_pos_size(pos, self.layout_size),
+                color,
+            );
         }
     }
 }

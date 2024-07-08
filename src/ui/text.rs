@@ -1,7 +1,5 @@
-use crate::render::RenderBuffer;
-
 use super::{container, Element, Length, Rect, UVec2, Widget};
-
+use crate::render::DrawHandle;
 use cosmic_text::{
     Action, Attrs, CacheKeyFlags, Edit, Family, FontSystem, Metrics, Motion, Shaping, Stretch,
     Style, SwashCache, Weight,
@@ -28,6 +26,9 @@ const DEFAULT_FONT_SIZE: f32 = 18.0;
 
 pub struct Text {
     buffer: cosmic_text::Buffer,
+    texture_buf: Vec<u8>,
+    width: u64,
+    height: u64,
 }
 
 pub fn text(text: &str) -> Text {
@@ -38,7 +39,12 @@ impl Text {
     pub fn new(font_size: f32) -> Self {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
         let buffer = cosmic_text::Buffer::new(&mut font_system, Metrics::new(font_size, font_size));
-        Self { buffer }
+        Self {
+            buffer,
+            texture_buf: Vec::new(),
+            width: 0,
+            height: 0,
+        }
     }
 
     pub fn with_text(mut self, text: &str) -> Self {
@@ -50,6 +56,12 @@ impl Text {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
         self.buffer
             .set_text(&mut font_system, text, DEFAULT_ATTRS, Shaping::Basic);
+
+        let (width, height) = self.buffer.size();
+        let (width, height) = (width.unwrap_or(0.0), height.unwrap_or(0.0));
+        self.width = width.ceil() as u64;
+        self.height = height.ceil() as u64;
+        self.texture_buf = vec![0; (self.width * self.height * 4) as usize];
     }
 }
 
@@ -63,16 +75,36 @@ impl Widget for Text {
         bounds
     }
 
-    fn render(&self, pos: UVec2, buf: &mut RenderBuffer) {
+    fn render(&self, pos: UVec2, draw_handle: &mut Box<dyn DrawHandle>) {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
         let mut swash_cache = SWASH_CACHE.lock().unwrap();
-        // swash_cache.get_image
+
+        // Iterate all the glyphs
+        // for run in self.buffer.layout_runs() {
+        //     for glyph in run.glyphs.iter() {
+        //         // Do we need this?
+        //         let physical_glyph = glyph.physical((0., 0.), 1.0);
+        //
+        //         // For now, draw the glyph with a white color
+        //         let glyph_color = match glyph.color_opt {
+        //             Some(some) => some,
+        //             None => cosmic_text::Color::rgb(0xFF, 0xFF, 0xFF),
+        //         };
+        //
+        //         let Some(image) =
+        //             swash_cache.get_image_uncached(&mut font_system, physical_glyph.cache_key)
+        //         else {
+        //             continue;
+        //         };
+        //     }
+        // }
+
         self.buffer.draw(
             &mut font_system,
             &mut swash_cache,
             cosmic_text::Color::rgb(0xFF, 0xFF, 0xFF),
             |x, y, w, h, color| {
-                buf.fill_rect(
+                draw_handle.draw_rect(
                     Rect::new(
                         pos.x + x.max(0) as u64, // use max(0) to prevent underflow
                         pos.y + y.max(0) as u64,
@@ -169,7 +201,7 @@ impl Widget for TextEditor {
         bounds
     }
 
-    fn render(&self, pos: UVec2, buf: &mut RenderBuffer) {
+    fn render(&self, pos: UVec2, draw_hande: &mut Box<dyn DrawHandle>) {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
         let mut swash_cache = SWASH_CACHE.lock().unwrap();
         let editor = self.editor.inner.borrow_mut();
@@ -182,7 +214,7 @@ impl Widget for TextEditor {
                 cosmic_text::Color::rgb(0xAA, 0xAA, 0xFF),
                 cosmic_text::Color::rgb(0xFF, 0xFF, 0xFF),
                 |x, y, w, h, color| {
-                    buf.fill_rect(
+                    draw_hande.draw_rect(
                         Rect::new(
                             pos.x + x.max(0) as u64,
                             pos.y + y.max(0) as u64,

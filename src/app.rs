@@ -2,11 +2,12 @@ use crate::{
     config::Config,
     item::Item,
     mode::{AppsMode, DmenuMode, FileMode, Mode, RunMode},
-    render::Renderer,
+    render::{CpuRenderer, Renderer},
     ui::{
         column, container, text_box, DynamicList, Editor, Element, Length, ListContent, SizedBox,
         TextEditor, UVec2, Widget,
-    }, winit_app::WinitApp,
+    },
+    winit_app::WinitApp,
 };
 use clap::Parser;
 use cosmic_text::Action;
@@ -35,7 +36,7 @@ struct Args {
 pub struct App {
     mode: Box<dyn Mode>,
     window: Arc<Window>,
-    renderer: Renderer,
+    renderer: Box<dyn Renderer>,
     matches: Vec<Item>,
     selected: usize,
     config: Config,
@@ -75,7 +76,7 @@ impl WinitApp for App {
 
         let config = Config::default();
         let matches = mode.matches(""); // initial matches
-        let renderer = Renderer::from_window(window.clone());
+        let renderer: Box<dyn Renderer> = Box::new(CpuRenderer::new(window.clone()));
         let editor = Editor::new();
         let list_content = ListContent::new();
         let root = build_ui(mode.name(), &config, editor.clone(), list_content.clone());
@@ -109,7 +110,7 @@ impl WinitApp for App {
             WindowEvent::RedrawRequested => {
                 let time = Instant::now();
 
-                self.renderer.draw(&self.root);
+                self.renderer.render(&self.root);
                 log::info!("rendered in {:?}", time.elapsed());
             }
             WindowEvent::KeyboardInput { event, .. } => {

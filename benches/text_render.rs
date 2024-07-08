@@ -20,7 +20,7 @@ fn render_ui(draw_handle: &mut DrawHandle) {
     let mut root = container(column(elements))
         .width(Length::Fill)
         .height(Length::Fill)
-        .bg(Color::from_rgba8(50, 50, 50, 255))
+        .bg(Color::from_rgba(50, 50, 50, 255))
         .padding(18)
         .into_element();
 

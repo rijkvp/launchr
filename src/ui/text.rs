@@ -127,10 +127,11 @@ fn convert_image(image: &cosmic_text::SwashImage, color: Color) -> Option<Vec<u8
         cosmic_text::SwashContent::Mask => {
             for i in 0..glyph_size {
                 let j = i << 2;
-                buffer[j] = color.red;
-                buffer[j + 1] = color.green;
-                buffer[j + 2] = color.blue;
-                buffer[j + 3] = image.data[i];
+                let pixel_color = color.premultiply_with(image.data[i]);
+                buffer[j] = pixel_color.red();
+                buffer[j + 1] = pixel_color.green();
+                buffer[j + 2] = pixel_color.blue();
+                buffer[j + 3] = pixel_color.alpha();
             }
         }
         _ => panic!("Unsupported image content"),
@@ -237,7 +238,7 @@ impl Widget for TextEditor {
                 |x, y, w, h, color| {
                     draw_handle.draw_rect(
                         Rect::new(pos.x + x.max(0) as u32, pos.y + y.max(0) as u32, w, h),
-                        color.into(),
+                        Color::from(color).premultiply(),
                     )
                 },
             );

@@ -40,15 +40,15 @@ pub enum FlexDirection {
 pub struct Flex {
     direction: FlexDirection,
     children: Vec<Element>,
-    child_offsets: Vec<u64>,
-    padding: u64,
+    child_offsets: Vec<u32>,
+    padding: u32,
     width: Length,
     height: Length,
     layout_size: UVec2,
 }
 
 impl Flex {
-    pub fn padding(mut self, padding: u64) -> Self {
+    pub fn padding(mut self, padding: u32) -> Self {
         self.padding = padding;
         self
     }
@@ -105,7 +105,7 @@ impl Widget for Flex {
         self.layout_size
     }
 
-    fn render(&self, pos: UVec2, draw_handle: &mut Box<dyn DrawHandle>) {
+    fn render(&self, pos: UVec2, draw_handle: &mut DrawHandle) {
         for (child, offset) in self.children.iter().zip(self.child_offsets.iter()) {
             let offset = match self.direction {
                 FlexDirection::Row => UVec2::new(*offset, 0),

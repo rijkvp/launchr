@@ -58,6 +58,7 @@
           packages = with pkgs; [
             cargo-flamegraph
             cargo-outdated
+            gnuplot
           ];
 
           LD_LIBRARY_PATH = rpath;

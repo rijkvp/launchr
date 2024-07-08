@@ -30,4 +30,22 @@ impl Color {
     pub fn to_array(&self) -> [u8; 4] {
         [self.red, self.green, self.blue, self.alpha]
     }
+
+    pub fn premultiply(&self) -> Self {
+        if self.alpha != 255 {
+            Self {
+                red: premultiply_u8(self.red, self.alpha),
+                green: premultiply_u8(self.green, self.alpha),
+                blue: premultiply_u8(self.blue, self.alpha),
+                alpha: self.alpha,
+            }
+        } else {
+            *self
+        }
+    }
+}
+
+fn premultiply_u8(c: u8, a: u8) -> u8 {
+    let prod = u32::from(c) * u32::from(a) + 128;
+    ((prod + (prod >> 8)) >> 8) as u8
 }

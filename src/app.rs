@@ -103,8 +103,7 @@ impl WinitApp for App {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(e) => {
                 log::debug!("resize window to {}x{}", e.width, e.height);
-                self.root
-                    .layout(UVec2::new(e.width as u64, e.height as u64));
+                self.root.layout(UVec2::new(e.width, e.height));
                 self.window.request_redraw();
             }
             WindowEvent::RedrawRequested => {
@@ -178,16 +177,14 @@ impl App {
                 }
             }));
         let window_size = self.window.inner_size();
-        self.root.layout(UVec2::new(
-            window_size.width as u64,
-            window_size.height as u64,
-        ));
+        self.root
+            .layout(UVec2::new(window_size.width, window_size.height));
     }
 }
 
 fn build_ui(mode_name: &str, config: &Config, editor: Editor, content: ListContent) -> Element {
     let editor = TextEditor::new(editor, config.font_size);
-    let editor_container = container(editor).height(Length::Fixed(config.font_size as u64));
+    let editor_container = container(editor).height(Length::Fixed(config.font_size as u32));
     let root = container(column([
         text_box(mode_name, config.font_size),
         container(editor_container)

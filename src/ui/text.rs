@@ -1,5 +1,5 @@
-use super::{container, Element, Length, Rect, UVec2, Widget};
-use crate::render::DrawHandle;
+use super::{container, Color, Element, Length, Rect, UVec2, Widget};
+use crate::render::{BorrowedBuffer, DrawHandle};
 use cosmic_text::{
     Action, Attrs, CacheKeyFlags, Edit, Family, FontSystem, Metrics, Motion, Shaping, Stretch,
     Style, SwashCache, Weight,
@@ -75,53 +75,74 @@ impl Widget for Text {
         bounds
     }
 
-    fn render(&self, pos: UVec2, draw_handle: &mut Box<dyn DrawHandle>) {
+    fn render(&self, pos: UVec2, draw_handle: &mut DrawHandle) {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
         let mut swash_cache = SWASH_CACHE.lock().unwrap();
 
         // Iterate all the glyphs
-        // for run in self.buffer.layout_runs() {
-        //     for glyph in run.glyphs.iter() {
-        //         // Do we need this?
-        //         let physical_glyph = glyph.physical((0., 0.), 1.0);
-        //
-        //         // For now, draw the glyph with a white color
-        //         let glyph_color = match glyph.color_opt {
-        //             Some(some) => some,
-        //             None => cosmic_text::Color::rgb(0xFF, 0xFF, 0xFF),
-        //         };
-        //
-        //         let Some(image) =
-        //             swash_cache.get_image_uncached(&mut font_system, physical_glyph.cache_key)
-        //         else {
-        //             continue;
-        //         };
-        //     }
-        // }
+        for run in self.buffer.layout_runs() {
+            for glyph in run.glyphs.iter() {
+                let physical_glyph = glyph.physical((0., 0.), 1.0);
 
-        self.buffer.draw(
-            &mut font_system,
-            &mut swash_cache,
-            cosmic_text::Color::rgb(0xFF, 0xFF, 0xFF),
-            |x, y, w, h, color| {
-                draw_handle.draw_rect(
-                    Rect::new(
-                        pos.x + x.max(0) as u64, // use max(0) to prevent underflow
-                        pos.y + y.max(0) as u64,
-                        w as u64,
-                        h as u64,
-                    ),
-                    color.into(),
-                )
-            },
-        );
+                // For now, draw the glyph with a white color
+                // TODO: transparency
+                let glyph_color = match glyph.color_opt {
+                    Some(some) => some,
+                    None => cosmic_text::Color::rgb(0xFF, 0xFF, 0xFF),
+                };
+
+                let Some(image) = swash_cache.get_image(&mut font_system, physical_glyph.cache_key)
+                else {
+                    continue;
+                };
+
+                let placement = image.placement;
+                if let Some(data) = convert_image(image, Color::from(glyph_color)) {
+                    let texture =
+                        BorrowedBuffer::from_bytes(&data, placement.width, placement.height);
+
+                    draw_handle.draw_texture(
+                        (pos.x as i32 + physical_glyph.x + placement.left) as u32,
+                        (pos.y as i32 + run.line_y as i32 + physical_glyph.y - placement.top)
+                            as u32,
+                        texture,
+                    );
+                }
+            }
+        }
     }
+}
+
+fn convert_image(image: &cosmic_text::SwashImage, color: Color) -> Option<Vec<u8>> {
+    let glyph_size = image.placement.width as usize * image.placement.height as usize;
+
+    if glyph_size == 0 {
+        return None;
+    }
+
+    debug_assert_eq!(image.data.len(), glyph_size);
+    let mut buffer = vec![0u8; glyph_size * 4];
+
+    match image.content {
+        cosmic_text::SwashContent::Mask => {
+            for i in 0..glyph_size {
+                let j = i << 2;
+                buffer[j] = color.red;
+                buffer[j + 1] = color.green;
+                buffer[j + 2] = color.blue;
+                buffer[j + 3] = image.data[i];
+            }
+        }
+        _ => panic!("Unsupported image content"),
+    }
+
+    Some(buffer)
 }
 
 pub fn text_box(text: &str, font_size: f32) -> Element {
     container(Text::new(font_size).with_text(text))
         .width(Length::Fill)
-        .height(Length::Fixed(font_size as u64))
+        .height(Length::Fixed(font_size as u32))
         .into_element()
 }
 
@@ -201,7 +222,7 @@ impl Widget for TextEditor {
         bounds
     }
 
-    fn render(&self, pos: UVec2, draw_hande: &mut Box<dyn DrawHandle>) {
+    fn render(&self, pos: UVec2, draw_handle: &mut DrawHandle) {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
         let mut swash_cache = SWASH_CACHE.lock().unwrap();
         let editor = self.editor.inner.borrow_mut();
@@ -214,13 +235,8 @@ impl Widget for TextEditor {
                 cosmic_text::Color::rgb(0xAA, 0xAA, 0xFF),
                 cosmic_text::Color::rgb(0xFF, 0xFF, 0xFF),
                 |x, y, w, h, color| {
-                    draw_hande.draw_rect(
-                        Rect::new(
-                            pos.x + x.max(0) as u64,
-                            pos.y + y.max(0) as u64,
-                            w as u64,
-                            h as u64,
-                        ),
+                    draw_handle.draw_rect(
+                        Rect::new(pos.x + x.max(0) as u32, pos.y + y.max(0) as u32, w, h),
                         color.into(),
                     )
                 },

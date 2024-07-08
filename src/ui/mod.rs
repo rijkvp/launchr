@@ -14,12 +14,12 @@ use crate::render::DrawHandle;
 
 #[derive(Clone, Copy, Debug)]
 pub struct UVec2 {
-    pub x: u64,
-    pub y: u64,
+    pub x: u32,
+    pub y: u32,
 }
 
 impl UVec2 {
-    pub fn new(x: u64, y: u64) -> Self {
+    pub fn new(x: u32, y: u32) -> Self {
         Self { x, y }
     }
     pub fn zero() -> Self {
@@ -56,7 +56,7 @@ pub struct Rect {
 }
 
 impl Rect {
-    pub fn new(x: u64, y: u64, width: u64, height: u64) -> Self {
+    pub fn new(x: u32, y: u32, width: u32, height: u32) -> Self {
         Self {
             pos: UVec2::new(x, y),
             size: UVec2::new(width, height),
@@ -71,7 +71,7 @@ impl Rect {
 #[derive(Debug, Clone, Copy)]
 pub enum Length {
     Auto,
-    Fixed(u64),
+    Fixed(u32),
     Fill,
 }
 
@@ -80,7 +80,7 @@ pub trait Widget {
     /// Layout the component and its children, returning the size of the component
     fn layout(&mut self, bounds: UVec2) -> UVec2;
     /// Renders the component to the buffer
-    fn render(&self, pos: UVec2, draw_handle: &mut Box<dyn DrawHandle>);
+    fn render(&self, pos: UVec2, draw_handle: &mut DrawHandle);
     /// Converts the widget into an element
     fn into_element(self) -> Element
     where
@@ -108,7 +108,7 @@ impl Widget for Element {
         self.widget.layout(bounds)
     }
 
-    fn render(&self, pos: UVec2, draw_handle: &mut Box<dyn DrawHandle>) {
+    fn render(&self, pos: UVec2, draw_handle: &mut DrawHandle) {
         self.widget.render(pos, draw_handle)
     }
 
@@ -167,7 +167,7 @@ impl Widget for SizedBox {
         self.layout_size
     }
 
-    fn render(&self, pos: UVec2, draw_handle: &mut Box<dyn DrawHandle>) {
+    fn render(&self, pos: UVec2, draw_handle: &mut DrawHandle) {
         if let Some(color) = self.color {
             draw_handle.draw_rect(
                 Rect::from_pos_size(pos, self.layout_size),

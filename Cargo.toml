@@ -18,13 +18,12 @@ open = "5.0"
 walkdir = "2.5"
 rayon = "1.9"
 
-[profile.dev.package."*"]
-opt-level = 3
-
 [profile.release]
 strip = "debuginfo"
 lto = true
-codegen-units = 1
+
+[profile.bench]
+lto = false
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
@@ -34,5 +33,5 @@ name = "files"
 harness = false
 
 [[bench]]
-name = "render"
+name = "text_render"
 harness = false

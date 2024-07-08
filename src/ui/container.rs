@@ -15,7 +15,7 @@ pub fn container(child: impl Widget + 'static) -> Container {
 pub struct Container {
     child: Element,
     bg_color: Option<Color>,
-    padding: u64,
+    padding: u32,
     width: Length,
     height: Length,
     layout_size: UVec2,
@@ -27,7 +27,7 @@ impl Container {
         self
     }
 
-    pub fn padding(mut self, padding: u64) -> Self {
+    pub fn padding(mut self, padding: u32) -> Self {
         self.padding = padding;
         self
     }
@@ -65,7 +65,7 @@ impl Widget for Container {
         self.layout_size
     }
 
-    fn render(&self, pos: UVec2, draw_handle: &mut Box<dyn DrawHandle>) {
+    fn render(&self, pos: UVec2, draw_handle: &mut DrawHandle) {
         if let Some(bg_color) = self.bg_color {
             draw_handle.draw_rect(Rect::from_pos_size(pos, self.layout_size), bg_color);
         }

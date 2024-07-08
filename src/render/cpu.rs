@@ -1,5 +1,5 @@
-use super::{texture::Texture, DrawHandle, Renderer};
-use crate::ui::{Color, Element, Rect, UVec2, Widget};
+use super::{DrawHandle, RenderBuffer, Renderer};
+use crate::ui::{Element, UVec2, Widget};
 use softbuffer::{Context, Surface};
 use std::{num::NonZeroU32, sync::Arc};
 use winit::window::Window;
@@ -42,19 +42,13 @@ impl Renderer for CpuRenderer {
                 surface_buffer.len() * 4,
             )
         };
-        let mut texture = Texture::from_bytes(surface_buffer_u8, width as u64, height as u64);
-        texture.clear();
-        let mut render_buffer: Box<dyn DrawHandle> = Box::new(texture);
+        let mut render_buffer = RenderBuffer::from_bytes(surface_buffer_u8, width, height);
+        render_buffer.clear();
 
-        root.render(UVec2::zero(), &mut render_buffer);
+        let mut draw_handle = DrawHandle::from(render_buffer);
+        root.render(UVec2::zero(), &mut draw_handle);
 
         self.window.pre_present_notify();
         surface_buffer.present().unwrap();
-    }
-}
-
-impl DrawHandle for Texture<'_> {
-    fn draw_rect(&mut self, rect: Rect, color: Color) {
-        self.fill_rect(rect, color);
     }
 }

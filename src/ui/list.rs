@@ -36,14 +36,14 @@ impl ListContent {
 
 pub struct DynamicList {
     content: ListContent,
-    item_height: u64,
-    spacing: u64,
-    current_width: u64,
+    item_height: u32,
+    spacing: u32,
+    current_width: u32,
     max_items: usize,
 }
 
 impl DynamicList {
-    pub fn new(content: ListContent, item_height: u64) -> Self {
+    pub fn new(content: ListContent, item_height: u32) -> Self {
         Self {
             content,
             item_height,
@@ -53,7 +53,7 @@ impl DynamicList {
         }
     }
 
-    pub fn spacing(mut self, spacing: u64) -> Self {
+    pub fn spacing(mut self, spacing: u32) -> Self {
         self.spacing = spacing;
         self
     }
@@ -86,7 +86,7 @@ impl Widget for DynamicList {
         bounds // always fill whole area
     }
 
-    fn render(&self, pos: UVec2, draw_handle: &mut Box<dyn DrawHandle>) {
+    fn render(&self, pos: UVec2, draw_handle: &mut DrawHandle) {
         for (i, child) in self
             .content
             .inner
@@ -96,7 +96,7 @@ impl Widget for DynamicList {
             .take(self.max_items)
             .enumerate()
         {
-            let offset = UVec2::new(0, i as u64 * (self.item_height + self.spacing));
+            let offset = UVec2::new(0, i as u32 * (self.item_height + self.spacing));
             child.render(pos + offset, draw_handle);
         }
     }

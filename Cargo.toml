@@ -27,6 +27,7 @@ lto = false
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
+image = "0.25.1"
 
 [[bench]]
 name = "files"

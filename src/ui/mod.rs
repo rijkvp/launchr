@@ -169,10 +169,7 @@ impl Widget for SizedBox {
 
     fn render(&self, pos: UVec2, draw_handle: &mut DrawHandle) {
         if let Some(color) = self.color {
-            draw_handle.draw_rect(
-                Rect::from_pos_size(pos, self.layout_size),
-                color,
-            );
+            draw_handle.draw_rect(Rect::from_pos_size(pos, self.layout_size), color);
         }
     }
 }

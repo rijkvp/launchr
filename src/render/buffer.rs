@@ -8,7 +8,7 @@ fn fill_rect(buf: &mut [u8], buf_width: u32, buf_height: u32, rect: Rect, color:
     let Rect { pos, size } = rect;
     let (x, y) = (pos.x.min(buf_width), pos.y.min(buf_height));
     let (w, h) = (size.x.min(buf_width - x), size.y.min(buf_height - y));
-    if color.alpha() == 255 { 
+    if color.alpha() == 255 {
         for y in y..y + h {
             for x in x..x + w {
                 let idx = (y * buf_width + x) as usize * 4;
@@ -68,9 +68,9 @@ fn blend_bufs(buf1: &mut [u8], buf2: &[u8]) {
 }
 
 pub struct RenderBuffer<'a> {
-    buffer: &'a mut [u8],
-    width: u32,
-    height: u32,
+    pub buffer: &'a mut [u8],
+    pub width: u32,
+    pub height: u32,
 }
 
 impl<'a> RenderBuffer<'a> {
@@ -98,6 +98,10 @@ impl DrawHandleImpl for RenderBuffer<'_> {
     fn draw_texture(&mut self, x: u32, y: u32, texture: BorrowedBuffer) {
         fill_texture(self.buffer, self.width, self.height, x, y, texture);
     }
+
+    fn get_bytes(&self) -> &[u8] {
+        &self.buffer
+    }
 }
 
 pub struct OnwedBuffer {
@@ -114,6 +118,10 @@ impl OnwedBuffer {
             height,
         }
     }
+
+    pub fn bytes(&self) -> &[u8] {
+        &self.buffer
+    }
 }
 
 impl DrawHandleImpl for OnwedBuffer {
@@ -125,6 +133,10 @@ impl DrawHandleImpl for OnwedBuffer {
     #[inline]
     fn draw_texture(&mut self, x: u32, y: u32, texture: BorrowedBuffer) {
         fill_texture(&mut self.buffer, self.width, self.height, x, y, texture);
+    }
+
+    fn get_bytes(&self) -> &[u8] {
+        &self.buffer
     }
 }
 

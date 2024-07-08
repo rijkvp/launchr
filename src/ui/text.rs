@@ -5,11 +5,22 @@ use cosmic_text::{
     Style, SwashCache, Weight,
 };
 use once_cell::sync::Lazy;
-use std::{cell::RefCell, rc::Rc, sync::Mutex};
+use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Mutex};
 use winit::keyboard::KeyCode;
 
 static FONT_SYSTEM: Lazy<Mutex<FontSystem>> = Lazy::new(|| Mutex::new(FontSystem::new()));
 static SWASH_CACHE: Lazy<Mutex<SwashCache>> = Lazy::new(|| Mutex::new(SwashCache::new()));
+static GLYPH_CACHE: Lazy<Mutex<GlyphCache>> = Lazy::new(|| Mutex::new(GlyphCache::default()));
+
+#[derive(Default)]
+struct GlyphCache {
+    cache: HashMap<cosmic_text::CacheKey, Option<CachcedGlyph>>,
+}
+
+struct CachcedGlyph {
+    texture: Vec<u8>,
+    placement: cosmic_text::Placement,
+}
 
 const DEFAULT_ATTRS: Attrs = Attrs {
     color_opt: None,
@@ -26,6 +37,7 @@ const DEFAULT_FONT_SIZE: f32 = 18.0;
 
 pub struct Text {
     buffer: cosmic_text::Buffer,
+    font: Option<String>,
     texture_buf: Vec<u8>,
     width: u64,
     height: u64,
@@ -41,6 +53,7 @@ impl Text {
         let buffer = cosmic_text::Buffer::new(&mut font_system, Metrics::new(font_size, font_size));
         Self {
             buffer,
+            font: None,
             texture_buf: Vec::new(),
             width: 0,
             height: 0,
@@ -52,10 +65,20 @@ impl Text {
         self
     }
 
+    // TOFIX: This does not update the text if already set
+    pub fn with_font(mut self, font_name: impl Into<String>) -> Self {
+        self.font = Some(font_name.into());
+        self
+    }
+
     pub fn set_text(&mut self, text: &str) {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
+        let mut attrs = DEFAULT_ATTRS;
+        if let Some(font) = &self.font {
+            attrs.family = Family::Name(&font)
+        }
         self.buffer
-            .set_text(&mut font_system, text, DEFAULT_ATTRS, Shaping::Basic);
+            .set_text(&mut font_system, text, attrs, Shaping::Basic);
 
         let (width, height) = self.buffer.size();
         let (width, height) = (width.unwrap_or(0.0), height.unwrap_or(0.0));
@@ -78,32 +101,44 @@ impl Widget for Text {
     fn render(&self, pos: UVec2, draw_handle: &mut DrawHandle) {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
         let mut swash_cache = SWASH_CACHE.lock().unwrap();
+        let mut glyph_cache = GLYPH_CACHE.lock().unwrap();
 
         // Iterate all the glyphs
         for run in self.buffer.layout_runs() {
             for glyph in run.glyphs.iter() {
                 let physical_glyph = glyph.physical((0., 0.), 1.0);
 
-                // For now, draw the glyph with a white color
-                // TODO: transparency
-                let glyph_color = match glyph.color_opt {
-                    Some(some) => some,
-                    None => cosmic_text::Color::rgb(0xFF, 0xFF, 0xFF),
-                };
-
-                let Some(image) = swash_cache.get_image(&mut font_system, physical_glyph.cache_key)
-                else {
-                    continue;
-                };
-
-                let placement = image.placement;
-                if let Some(data) = convert_image(image, Color::from(glyph_color)) {
-                    let texture =
-                        BorrowedBuffer::from_bytes(&data, placement.width, placement.height);
+                if let Some(glyph) = glyph_cache
+                    .cache
+                    .entry(physical_glyph.cache_key)
+                    .or_insert_with(|| {
+                        // For now, draw the glyph with a white color
+                        // TODO: transparency
+                        let glyph_color = match glyph.color_opt {
+                            Some(some) => some,
+                            None => cosmic_text::Color::rgb(0xFF, 0xFF, 0xFF),
+                        };
+                        swash_cache
+                            .get_image_uncached(&mut font_system, physical_glyph.cache_key)
+                            .and_then(|image| {
+                                convert_image(&image, Color::from(glyph_color)).map(|texture| {
+                                    CachcedGlyph {
+                                        texture,
+                                        placement: image.placement,
+                                    }
+                                })
+                            })
+                    })
+                {
+                    let texture = BorrowedBuffer::from_bytes(
+                        &glyph.texture,
+                        glyph.placement.width,
+                        glyph.placement.height,
+                    );
 
                     draw_handle.draw_texture(
-                        (pos.x as i32 + physical_glyph.x + placement.left) as u32,
-                        (pos.y as i32 + run.line_y as i32 + physical_glyph.y - placement.top)
+                        (pos.x as i32 + physical_glyph.x + glyph.placement.left) as u32,
+                        (pos.y as i32 + run.line_y as i32 + physical_glyph.y - glyph.placement.top)
                             as u32,
                         texture,
                     );

@@ -12,5 +12,9 @@ fn bench_desktop_files(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, bench_desktop_files);
+criterion_group! {
+    name = benches;
+    config = Criterion::default().sample_size(20);
+    targets = bench_desktop_files
+}
 criterion_main!(benches);

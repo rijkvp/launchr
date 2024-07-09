@@ -31,7 +31,7 @@ where
         .filter_map(Result::ok)
         .filter_map(|e| {
             let p = e.path();
-            if p.is_file() && filter(p) {
+            if filter(p) {
                 Some(p.to_path_buf())
             } else {
                 None

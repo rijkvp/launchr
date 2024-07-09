@@ -17,9 +17,7 @@ use std::{
     time::Instant,
 };
 use winit::{
-    event::{ElementState, KeyEvent, WindowEvent},
-    keyboard::{KeyCode, PhysicalKey},
-    window::{Window, WindowLevel},
+    event::{ElementState, KeyEvent, WindowEvent}, keyboard::{KeyCode, PhysicalKey}, platform::wayland::WindowAttributesExtWayland, window::{Window, WindowLevel}
 };
 
 #[derive(Parser, Debug)]
@@ -71,7 +69,8 @@ impl WinitApp for App {
             .with_title("Launcher")
             .with_decorations(false)
             .with_transparent(true)
-            .with_window_level(WindowLevel::AlwaysOnTop);
+            .with_window_level(WindowLevel::AlwaysOnTop)
+            .with_name("launcher", "launcher");
         let window = Arc::new(event_loop.create_window(attributes).unwrap());
 
         let config = Config::default();

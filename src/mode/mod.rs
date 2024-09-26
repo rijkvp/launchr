@@ -6,6 +6,10 @@ mod run;
 pub use apps::AppsMode;
 pub use dmenu::DmenuMode;
 pub use file::FileMode;
+use nucleo_matcher::{
+    pattern::{CaseMatching, Normalization, Pattern},
+    Config, Matcher,
+};
 pub use run::RunMode;
 
 use crate::item::Item;
@@ -14,9 +18,11 @@ pub trait Mode {
     fn name(&self) -> &str;
     fn options(&mut self) -> Vec<Item>;
     fn run(&mut self, input: &str) -> Vec<Item> {
-        self.options()
+        let mut matcher = Matcher::new(Config::DEFAULT.match_paths());
+        Pattern::parse(input, CaseMatching::Ignore, Normalization::Smart)
+            .match_list(self.options(), &mut matcher)
             .into_iter()
-            .filter(|i| i.text().to_lowercase().contains(&input.to_lowercase()))
+            .map(|(item, _)| item)
             .collect()
     }
 }

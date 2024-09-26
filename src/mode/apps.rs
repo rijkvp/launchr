@@ -1,5 +1,5 @@
 use super::Mode;
-use crate::item::Exec;
+use crate::item::{Exec, ItemType};
 use crate::{item::Item, util};
 use rayon::prelude::*;
 use std::io::BufRead;
@@ -39,7 +39,7 @@ fn load_desktop_files() -> Vec<Item> {
     );
 
     timer = Instant::now();
-    let mut items = desktop_files
+    let items = desktop_files
         .into_par_iter()
         .filter_map(|path| read_desktop_file(&path))
         .collect::<Vec<Item>>();
@@ -48,7 +48,6 @@ fn load_desktop_files() -> Vec<Item> {
         items.len(),
         timer.elapsed()
     );
-    items.sort_unstable_by_key(|a| a.text());
     items
 }
 
@@ -80,7 +79,7 @@ fn read_desktop_file(path: &Path) -> Option<Item> {
     let exec = exec_args.expand();
 
     log::debug!("read desktop file: {} -> {:?}", name, exec);
-    Some(Item::Exec { name, exec })
+    Some(Item::new(name, ItemType::Exec { exec }))
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -1,6 +1,6 @@
 use super::Mode;
 use crate::{
-    item::{Exec, Item},
+    item::{Exec, Item, ItemType},
     util,
 };
 
@@ -14,12 +14,16 @@ impl RunMode {
         Self {
             options: util::find_files_from_env("PATH", &|_| true)
                 .into_iter()
-                .map(|path| Item::Exec {
-                    name: path.file_name().unwrap().to_string_lossy().to_string(),
-                    exec: Exec {
-                        program: path.to_string_lossy().to_string(),
-                        args: Vec::new(),
-                    },
+                .map(|path| {
+                    Item::new(
+                        path.file_name().unwrap().to_string_lossy().to_string(),
+                        ItemType::Exec {
+                            exec: Exec {
+                                program: path.to_string_lossy().to_string(),
+                                args: Vec::new(),
+                            },
+                        },
+                    )
                 })
                 .collect(),
         }

@@ -17,7 +17,10 @@ use std::{
     time::Instant,
 };
 use winit::{
-    event::{ElementState, KeyEvent, WindowEvent}, keyboard::{KeyCode, PhysicalKey}, platform::wayland::WindowAttributesExtWayland, window::{Window, WindowLevel}
+    event::{ElementState, KeyEvent, WindowEvent},
+    keyboard::{KeyCode, PhysicalKey},
+    platform::wayland::WindowAttributesExtWayland,
+    window::{Window, WindowLevel},
 };
 
 #[derive(Parser, Debug)]
@@ -26,6 +29,9 @@ struct Args {
     /// dmenu mode
     #[arg(short, long)]
     dmenu: bool,
+    /// Prompt to display in dmenu mode
+    #[arg(short, long)]
+    prompt: Option<String>,
     /// Mode to use
     #[arg(short, long, default_value = "run")]
     mode: String,
@@ -52,7 +58,7 @@ impl WinitApp for App {
             io::stdin()
                 .read_to_string(&mut buffer)
                 .expect("Failed to read from stdin");
-            Box::new(DmenuMode::new(buffer))
+            Box::new(DmenuMode::new(args.prompt, buffer))
         } else {
             match args.mode.as_str() {
                 "apps" => Box::new(AppsMode::load()),
@@ -71,6 +77,7 @@ impl WinitApp for App {
             .with_transparent(true)
             .with_window_level(WindowLevel::AlwaysOnTop)
             .with_name("launcher", "launcher");
+
         let window = Arc::new(event_loop.create_window(attributes).unwrap());
 
         let config = Config::default();
@@ -138,13 +145,13 @@ impl App {
                 is_dirty = true;
                 self.exit = true;
             } else if event.physical_key == PhysicalKey::Code(KeyCode::ArrowDown) {
-                if self.selected < self.matches.len() - 1 {
-                    self.selected += 1;
-                    log::info!("selected: {}", self.selected);
-                    is_dirty = true;
-                }
+                self.selected =
+                    (self.selected as i64 + 1).rem_euclid(self.matches.len() as i64) as usize;
+                log::info!("selected: {}", self.selected);
+                is_dirty = true;
             } else if event.physical_key == PhysicalKey::Code(KeyCode::ArrowUp) {
-                self.selected = self.selected.saturating_sub(1);
+                self.selected =
+                    (self.selected as i64 - 1).rem_euclid(self.matches.len() as i64) as usize;
                 log::info!("selected: {}", self.selected);
                 is_dirty = true;
             } else {
@@ -154,6 +161,7 @@ impl App {
                 }
                 if let Some(char) = event.text.and_then(|t| t.chars().next()) {
                     self.editor.perform_action(Action::Insert(char));
+                    self.selected = 0;
                     is_dirty = true;
                 }
             }
@@ -166,11 +174,11 @@ impl App {
         self.list_content
             .update(self.matches.iter().enumerate().map(|(i, item)| {
                 if i == self.selected {
-                    container(text_box(&item.display(), 16.0))
+                    container(text_box(&item.to_string(), 16.0))
                         .bg(self.config.colors.primary)
                         .into_element()
                 } else {
-                    container(text_box(&item.display(), 16.0))
+                    container(text_box(&item.to_string(), 16.0))
                         .bg(self.config.colors.background_second)
                         .into_element()
                 }

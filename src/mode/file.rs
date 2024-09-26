@@ -1,16 +1,34 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use super::Mode;
-use crate::item::Item;
+use crate::item::{Item, ItemType};
 use ignore::Walk;
 
 pub struct FileMode {
     root: PathBuf,
+    files: Option<Vec<Item>>,
 }
 
 impl FileMode {
     pub fn new(root: PathBuf) -> Self {
-        Self { root }
+        Self { root, files: None }
+    }
+
+    fn load_files(root: &Path) -> Vec<Item> {
+        let start_time = std::time::Instant::now();
+        let items: Vec<Item> = Walk::new(&root)
+            .filter_map(Result::ok)
+            .map(|entry| {
+                Item::new(
+                    entry.path().to_string_lossy().to_string(),
+                    // TODO: Investigate whether checking for is_dir is necessary since it can be
+                    // very slow
+                    ItemType::File { is_dir: false },
+                )
+            })
+            .collect();
+        log::info!("found {} files in {:?}", items.len(), start_time.elapsed());
+        items
     }
 }
 
@@ -20,9 +38,8 @@ impl Mode for FileMode {
     }
 
     fn options(&mut self) -> Vec<Item> {
-        Walk::new(&self.root)
-            .filter_map(Result::ok)
-            .map(|entry| Item::File(entry.path().to_path_buf()))
-            .collect()
+        self.files
+            .get_or_insert_with(|| Self::load_files(&self.root))
+            .to_vec()
     }
 }

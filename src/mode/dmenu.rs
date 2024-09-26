@@ -2,22 +2,26 @@ use super::Mode;
 use crate::item::Item;
 
 pub struct DmenuMode {
+    prompt: String,
     options: Vec<Item>,
 }
 
 impl DmenuMode {
-    pub fn new(input: String) -> Self {
+    pub fn new(prompt: Option<String>, input: String) -> Self {
         let options = input
             .lines()
-            .map(|s| Item::Selection(s.to_string()))
+            .map(|s| Item::new_selection(s.to_string()))
             .collect();
-        Self { options }
+        Self {
+            prompt: prompt.unwrap_or("dmenu".to_string()),
+            options,
+        }
     }
 }
 
 impl Mode for DmenuMode {
     fn name(&self) -> &str {
-        "dmenu"
+        &self.prompt
     }
 
     fn options(&mut self) -> Vec<Item> {

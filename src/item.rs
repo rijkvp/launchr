@@ -1,4 +1,7 @@
-use std::{path::PathBuf, process::Command};
+use std::{
+    fmt::{self, Display, Formatter},
+    process::Command,
+};
 
 #[derive(Debug, Clone)]
 pub struct Exec {
@@ -18,55 +21,65 @@ impl Exec {
 }
 
 #[derive(Debug, Clone)]
-pub enum Item {
-    File(PathBuf),
-    Exec { name: String, exec: Exec },
-    Selection(String),
+pub struct Item {
+    text: String,
+    item_type: ItemType,
+}
+
+#[derive(Debug, Clone)]
+pub enum ItemType {
+    Selection,
+    Exec { exec: Exec },
+    File { is_dir: bool },
+}
+
+impl AsRef<str> for Item {
+    fn as_ref(&self) -> &str {
+        &self.text
+    }
+}
+
+impl Display for Item {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self.item_type {
+            ItemType::Selection => write!(f, "{}", self.text),
+            ItemType::Exec { .. } => write!(f, "[EXEC] {}", self.text),
+            ItemType::File { is_dir } => {
+                write!(f, "[{}] {}", if is_dir { "DIR" } else { "FILE" }, self.text)
+            }
+        }
+    }
 }
 
 impl Item {
-    pub fn display(&self) -> String {
-        match self {
-            Item::File(path) => {
-                format!(
-                    "[{}] {}",
-                    if path.is_dir() { "DIR " } else { "FILE" },
-                    path.file_name().unwrap().to_string_lossy()
-                )
-            }
-            Item::Exec { name, .. } => name.to_string(),
-            Item::Selection(s) => s.to_string(),
-        }
+    pub fn new(text: String, item_type: ItemType) -> Self {
+        Self { text, item_type }
     }
 
-    pub fn text(&self) -> String {
-        match self {
-            Item::File(path) => path.file_name().unwrap().to_string_lossy().to_string(),
-            Item::Exec { name, .. } => name.to_string(),
-            Item::Selection(s) => s.to_string(),
-        }
+    pub fn new_selection(text: String) -> Self {
+        Self::new(text, ItemType::Selection)
     }
 
     pub fn exec(&self) {
-        match self {
-            Item::File(path) => {
+        match self.item_type {
+            ItemType::Selection => {
+                // Print the selection
+                println!("{}", self.text);
+            }
+            ItemType::File { .. } => {
                 // Open the file using default software
-                log::info!("opening file: {}", path.display());
-                if let Err(e) = open::that(&path) {
-                    eprintln!("Failed to open {}: {}", path.display(), e);
+                log::info!("opening file: {}", self.text);
+                if let Err(e) = open::that(&self.text) {
+                    eprintln!("Failed to open {}: {}", self.text, e);
                 }
             }
-            Item::Exec { name: _, exec } => {
+            ItemType::Exec { ref exec } => {
                 // Execute the command as child process
                 let cmd = exec.command();
                 log::info!("executing: '{cmd}'");
                 if let Err(e) = Command::new(&exec.program).args(&exec.args).spawn() {
                     eprintln!("Failed to run '{cmd}': {e}");
                 }
-            }
-            Item::Selection(_) => {
-                // Print the selection
-                println!("{}", self.text());
             }
         }
     }

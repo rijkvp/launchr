@@ -114,7 +114,6 @@ impl WinitApp for App {
             }
             WindowEvent::RedrawRequested => {
                 let time = Instant::now();
-
                 self.renderer.render(&self.root);
                 log::info!("rendered in {:?}", time.elapsed());
             }
@@ -141,8 +140,9 @@ impl App {
             if event.physical_key == PhysicalKey::Code(KeyCode::Escape) {
                 self.exit = true;
             } else if event.physical_key == PhysicalKey::Code(KeyCode::Enter) {
-                self.mode.exec(&self.matches[self.selected].item);
+                is_dirty = true;
                 self.exit = true;
+                self.mode.exec(&self.matches[self.selected].item);
             } else if event.physical_key == PhysicalKey::Code(KeyCode::ArrowDown) {
                 self.selected =
                     (self.selected as i64 + 1).rem_euclid(self.matches.len() as i64) as usize;

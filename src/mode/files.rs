@@ -28,7 +28,7 @@ impl Mode for FilesMode {
     fn exec(&self, item: &Item) {
         // Open the file using default software
         log::info!("opening: {}", item);
-        if let Err(e) = open::that(self.root.join(item.as_ref())) {
+        if let Err(e) = open::that_detached(self.root.join(item.as_ref())) {
             eprintln!("Failed to open {}: {}", item, e);
         }
     }

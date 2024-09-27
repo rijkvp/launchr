@@ -51,9 +51,9 @@ pub struct App {
 }
 
 impl WinitApp for App {
-    fn new(event_loop: &winit::event_loop::ActiveEventLoop) -> Self {
+    fn start(event_loop: &winit::event_loop::ActiveEventLoop) -> Self {
         let args: Args = Args::parse();
-        let mode: Box<dyn Mode> = if args.dmenu {
+        let mut mode: Box<dyn Mode> = if args.dmenu {
             let mut buffer = String::new();
             io::stdin()
                 .read_to_string(&mut buffer)
@@ -86,7 +86,8 @@ impl WinitApp for App {
         let editor = Editor::new();
         let list_content = ListContent::new();
         let root = build_ui(mode.name(), &config, editor.clone(), list_content.clone());
-        App {
+        let matches = mode.run(""); // initial
+        let mut app = App {
             window,
             mode,
             renderer,
@@ -96,8 +97,10 @@ impl WinitApp for App {
             root,
             list_content,
             editor,
-            matches: Vec::new(),
-        }
+            matches,
+        };
+        app.update(); // initial update
+        app
     }
 
     fn window_event(

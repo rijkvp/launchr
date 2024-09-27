@@ -10,7 +10,7 @@ pub enum WinitAppLauncher<App: WinitApp> {
 }
 
 pub trait WinitApp {
-    fn new(event_loop: &ActiveEventLoop) -> Self;
+    fn start(event_loop: &ActiveEventLoop) -> Self;
     fn window_event(&mut self, event_loop: &ActiveEventLoop, event: WindowEvent);
     fn exit(&self) -> bool;
 }
@@ -25,7 +25,7 @@ pub fn launch_winit_app<App: WinitApp>() {
 
 impl<App: WinitApp> ApplicationHandler for WinitAppLauncher<App> {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
-        *self = Self::Running(App::new(event_loop));
+        *self = Self::Running(App::start(event_loop));
     }
 
     fn window_event(

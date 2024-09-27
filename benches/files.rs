@@ -1,20 +1,17 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use launcher::util::find_files_from_env;
-use std::ffi::OsStr;
+use launcher::file_finder;
 
-fn bench_desktop_files(c: &mut Criterion) {
-    c.bench_function("desktop_files", |b| {
+fn bench_files(c: &mut Criterion) {
+    c.bench_function("files", |b| {
         b.iter(|| {
-            let _ = find_files_from_env("XDG_DATA_DIRS", &|path| {
-                Some(OsStr::new("desktop")) == path.extension()
-            });
+            let _ = file_finder::find_all_files(&dirs::home_dir().unwrap());
         });
     });
 }
 
 criterion_group! {
-    name = benches;
+    name = files;
     config = Criterion::default().sample_size(20);
-    targets = bench_desktop_files
+    targets = bench_files
 }
-criterion_main!(benches);
+criterion_main!(files);

@@ -1,3 +1,5 @@
+use crate::item::{Item, ItemType};
+use ignore::WalkBuilder;
 use rayon::prelude::*;
 use std::{
     collections::HashSet,
@@ -38,4 +40,32 @@ where
             }
         })
         .collect()
+}
+
+pub fn find_all_files(root: &Path) -> Vec<Item> {
+    let start_time = std::time::Instant::now();
+    let mut items: Vec<Item> = WalkBuilder::new(&root)
+        .build()
+        .filter_map(Result::ok)
+        .map(|entry| {
+            Item::new(
+                entry
+                    .path()
+                    .strip_prefix(&root)
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string(),
+                ItemType::File {
+                    is_dir: entry.file_type().map(|f| f.is_dir()).unwrap_or(false),
+                },
+            )
+        })
+        .collect();
+    items.swap_remove(0); // Remove the root directory
+    log::info!(
+        "found {} files/directories in {:?}",
+        items.len(),
+        start_time.elapsed()
+    );
+    items
 }

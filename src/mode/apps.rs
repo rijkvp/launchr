@@ -1,6 +1,6 @@
 use super::Mode;
 use crate::item::{Exec, ItemType};
-use crate::{item::Item, util};
+use crate::{file_finder, item::Item};
 use rayon::prelude::*;
 use std::io::BufRead;
 use std::{ffi::OsStr, fs::File, io::BufReader, path::Path, time::Instant};
@@ -25,11 +25,15 @@ impl Mode for AppsMode {
     fn options(&mut self) -> &Vec<Item> {
         &self.options
     }
+
+    fn exec(&self, item: &Item) {
+        super::exec_item(item);
+    }
 }
 
-fn load_desktop_files() -> Vec<Item> {
+pub fn load_desktop_files() -> Vec<Item> {
     let mut timer = Instant::now();
-    let desktop_files = util::find_files_from_env("XDG_DATA_DIRS", &|path| {
+    let desktop_files = file_finder::find_files_from_env("XDG_DATA_DIRS", &|path| {
         Some(OsStr::new("desktop")) == path.extension()
     });
     log::info!(

@@ -1,7 +1,4 @@
-use std::{
-    fmt::{self, Display, Formatter},
-    process::Command,
-};
+use std::fmt::{self, Display, Formatter};
 
 #[derive(Debug, Clone)]
 pub struct Exec {
@@ -45,7 +42,12 @@ impl Display for Item {
             ItemType::Selection => write!(f, "{}", self.text),
             ItemType::Exec { .. } => write!(f, "[EXEC] {}", self.text),
             ItemType::File { is_dir } => {
-                write!(f, "[{}] {}", if is_dir { "DIR" } else { "FILE" }, self.text)
+                write!(
+                    f,
+                    "[{}] {}",
+                    if is_dir { "DIR " } else { "FILE" },
+                    self.text
+                )
             }
         }
     }
@@ -60,27 +62,7 @@ impl Item {
         Self::new(text, ItemType::Selection)
     }
 
-    pub fn exec(&self) {
-        match self.item_type {
-            ItemType::Selection => {
-                // Print the selection
-                println!("{}", self.text);
-            }
-            ItemType::File { .. } => {
-                // Open the file using default software
-                log::info!("opening file: {}", self.text);
-                if let Err(e) = open::that(&self.text) {
-                    eprintln!("Failed to open {}: {}", self.text, e);
-                }
-            }
-            ItemType::Exec { ref exec } => {
-                // Execute the command as child process
-                let cmd = exec.command();
-                log::info!("executing: '{cmd}'");
-                if let Err(e) = Command::new(&exec.program).args(&exec.args).spawn() {
-                    eprintln!("Failed to run '{cmd}': {e}");
-                }
-            }
-        }
+    pub fn item_type(&self) -> &ItemType {
+        &self.item_type
     }
 }

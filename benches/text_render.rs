@@ -55,11 +55,11 @@ fn bench_text_render(c: &mut Criterion) {
 }
 
 criterion_group! {
-    name = benches;
+    name = text_render;
     config = Criterion::default().sample_size(10);
     targets = bench_text_render
 }
-criterion_main!(benches);
+criterion_main!(text_render);
 
 const TEXT: &str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
 

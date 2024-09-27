@@ -27,4 +27,9 @@ impl Mode for DmenuMode {
     fn options(&mut self) -> &Vec<Item> {
         &self.options
     }
+
+    fn exec(&self, item: &Item) {
+        // Print the selection
+        println!("{}", item);
+    }
 }

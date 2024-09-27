@@ -4,5 +4,5 @@ pub mod item;
 pub mod mode;
 pub mod render;
 pub mod ui;
-pub mod util;
+pub mod file_finder;
 pub mod winit_app;

@@ -1,7 +1,7 @@
 use super::Mode;
 use crate::{
+    file_finder,
     item::{Exec, Item, ItemType},
-    util,
 };
 
 pub struct RunMode {
@@ -12,7 +12,7 @@ impl RunMode {
     pub fn load() -> Self {
         // TODO: Filter on executable files
         Self {
-            options: util::find_files_from_env("PATH", &|_| true)
+            options: file_finder::find_files_from_env("PATH", &|_| true)
                 .into_iter()
                 .map(|path| {
                     Item::new(
@@ -29,6 +29,7 @@ impl RunMode {
         }
     }
 }
+
 impl Mode for RunMode {
     fn name(&self) -> &str {
         "Run"
@@ -36,5 +37,9 @@ impl Mode for RunMode {
 
     fn options(&mut self) -> &Vec<Item> {
         &self.options
+    }
+
+    fn exec(&self, item: &Item) {
+        super::exec_item(item);
     }
 }

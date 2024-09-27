@@ -16,6 +16,7 @@ use std::{
     time::Instant,
 };
 use winit::{
+    dpi::PhysicalSize,
     event::{ElementState, KeyEvent, WindowEvent},
     keyboard::{KeyCode, PhysicalKey},
     platform::wayland::WindowAttributesExtWayland,
@@ -75,6 +76,7 @@ impl WinitApp for App {
             .with_decorations(false)
             .with_transparent(true)
             .with_window_level(WindowLevel::AlwaysOnTop)
+            .with_inner_size(PhysicalSize::new(1300, 700))
             .with_name("launcher", "launcher");
 
         let window = Arc::new(event_loop.create_window(attributes).unwrap());
@@ -139,7 +141,7 @@ impl App {
             if event.physical_key == PhysicalKey::Code(KeyCode::Escape) {
                 self.exit = true;
             } else if event.physical_key == PhysicalKey::Code(KeyCode::Enter) {
-                self.matches[self.selected].item.exec();
+                self.mode.exec(&self.matches[self.selected].item);
                 self.exit = true;
             } else if event.physical_key == PhysicalKey::Code(KeyCode::ArrowDown) {
                 self.selected =
@@ -172,11 +174,11 @@ impl App {
             .update(self.matches.iter().enumerate().map(|(i, m)| {
                 let item_text = format!("{} ({})", m.item, m.score);
                 if i == self.selected {
-                    container(text_box(&item_text, self.config.font_size))
+                    container(text_box(&item_text, self.config.font_size.normal))
                         .bg(self.config.colors.primary)
                         .into_element()
                 } else {
-                    container(text_box(&item_text, self.config.font_size))
+                    container(text_box(&item_text, self.config.font_size.normal))
                         .bg(self.config.colors.background_second)
                         .into_element()
                 }
@@ -188,10 +190,10 @@ impl App {
 }
 
 fn build_ui(mode_name: &str, config: &Config, editor: Editor, content: ListContent) -> Element {
-    let editor = TextEditor::new(editor, config.font_size);
-    let editor_container = container(editor).height(Length::Fixed(config.font_size as u32));
+    let editor = TextEditor::new(editor, config.font_size.normal);
+    let editor_container = container(editor).height(Length::Fixed(config.font_size.normal as u32));
     let root = container(column([
-        text_box(mode_name, config.font_size),
+        text_box(mode_name, config.font_size.large),
         container(editor_container)
             .padding(4)
             .bg(config.colors.background_second)

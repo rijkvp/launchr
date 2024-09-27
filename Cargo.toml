@@ -35,5 +35,10 @@ name = "files"
 harness = false
 
 [[bench]]
+name = "desktop_files"
+harness = false
+
+[[bench]]
 name = "text_render"
 harness = false
+

@@ -1,15 +1,29 @@
 use crate::ui::Color;
 
 pub struct Config {
-    pub font_size: f32,
+    pub font_size: FontSizeConfig,
     pub colors: ColorConfig,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
-            font_size: 22.0,
+            font_size: FontSizeConfig::default(),
             colors: ColorConfig::default(),
+        }
+    }
+}
+
+pub struct FontSizeConfig {
+    pub normal: f32,
+    pub large: f32,
+}
+
+impl Default for FontSizeConfig {
+    fn default() -> Self {
+        Self {
+            normal: 18.0,
+            large: 24.0,
         }
     }
 }

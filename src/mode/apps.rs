@@ -22,8 +22,8 @@ impl Mode for AppsMode {
         "Applications"
     }
 
-    fn options(&mut self) -> Vec<Item> {
-        self.options.clone()
+    fn options(&mut self) -> &Vec<Item> {
+        &self.options
     }
 }
 

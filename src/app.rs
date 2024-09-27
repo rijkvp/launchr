@@ -1,7 +1,6 @@
 use crate::{
     config::Config,
-    item::Item,
-    mode::{AppsMode, DmenuMode, FileMode, Mode, RunMode},
+    mode::{AppsMode, DmenuMode, FilesMode, Match, Mode, RunMode},
     render::{CpuRenderer, Renderer},
     ui::{
         column, container, text_box, DynamicList, Editor, Element, Length, ListContent, SizedBox,
@@ -41,19 +40,19 @@ pub struct App {
     mode: Box<dyn Mode>,
     window: Arc<Window>,
     renderer: Box<dyn Renderer>,
-    matches: Vec<Item>,
     selected: usize,
     config: Config,
     exit: bool,
     root: Element,
     list_content: ListContent,
+    matches: Vec<Match>,
     editor: Editor,
 }
 
 impl WinitApp for App {
     fn new(event_loop: &winit::event_loop::ActiveEventLoop) -> Self {
         let args: Args = Args::parse();
-        let mut mode: Box<dyn Mode> = if args.dmenu {
+        let mode: Box<dyn Mode> = if args.dmenu {
             let mut buffer = String::new();
             io::stdin()
                 .read_to_string(&mut buffer)
@@ -63,7 +62,7 @@ impl WinitApp for App {
             match args.mode.as_str() {
                 "apps" => Box::new(AppsMode::load()),
                 "run" => Box::new(RunMode::load()),
-                "file" => Box::new(FileMode::new(dirs::home_dir().unwrap())),
+                "files" => Box::new(FilesMode::new(dirs::home_dir().unwrap())),
                 other => {
                     eprintln!("Unknown mode: {}", other);
                     std::process::exit(1);
@@ -81,7 +80,6 @@ impl WinitApp for App {
         let window = Arc::new(event_loop.create_window(attributes).unwrap());
 
         let config = Config::default();
-        let matches = mode.matches(""); // initial matches
         let renderer: Box<dyn Renderer> = Box::new(CpuRenderer::new(window.clone()));
         let editor = Editor::new();
         let list_content = ListContent::new();
@@ -90,13 +88,13 @@ impl WinitApp for App {
             window,
             mode,
             renderer,
-            matches,
             selected: 0,
             config,
             exit: false,
             root,
             list_content,
             editor,
+            matches: Vec::new(),
         }
     }
 
@@ -141,8 +139,7 @@ impl App {
             if event.physical_key == PhysicalKey::Code(KeyCode::Escape) {
                 self.exit = true;
             } else if event.physical_key == PhysicalKey::Code(KeyCode::Enter) {
-                self.matches[self.selected].exec();
-                is_dirty = true;
+                self.matches[self.selected].item.exec();
                 self.exit = true;
             } else if event.physical_key == PhysicalKey::Code(KeyCode::ArrowDown) {
                 self.selected =
@@ -170,15 +167,16 @@ impl App {
     }
 
     fn update(&mut self) {
-        self.matches = self.mode.matches(&self.editor.text());
+        self.matches = self.mode.run(&self.editor.text());
         self.list_content
-            .update(self.matches.iter().enumerate().map(|(i, item)| {
+            .update(self.matches.iter().enumerate().map(|(i, m)| {
+                let item_text = format!("{} ({})", m.item, m.score);
                 if i == self.selected {
-                    container(text_box(&item.to_string(), 16.0))
+                    container(text_box(&item_text, self.config.font_size))
                         .bg(self.config.colors.primary)
                         .into_element()
                 } else {
-                    container(text_box(&item.to_string(), 16.0))
+                    container(text_box(&item_text, self.config.font_size))
                         .bg(self.config.colors.background_second)
                         .into_element()
                 }

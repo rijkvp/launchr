@@ -4,12 +4,12 @@ use super::Mode;
 use crate::item::{Item, ItemType};
 use ignore::Walk;
 
-pub struct FileMode {
+pub struct FilesMode {
     root: PathBuf,
     files: Option<Vec<Item>>,
 }
 
-impl FileMode {
+impl FilesMode {
     pub fn new(root: PathBuf) -> Self {
         Self { root, files: None }
     }
@@ -32,14 +32,13 @@ impl FileMode {
     }
 }
 
-impl Mode for FileMode {
+impl Mode for FilesMode {
     fn name(&self) -> &str {
         "Files"
     }
 
-    fn options(&mut self) -> Vec<Item> {
+    fn options(&mut self) -> &Vec<Item> {
         self.files
             .get_or_insert_with(|| Self::load_files(&self.root))
-            .to_vec()
     }
 }

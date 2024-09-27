@@ -24,7 +24,7 @@ impl Mode for DmenuMode {
         &self.prompt
     }
 
-    fn options(&mut self) -> Vec<Item> {
-        self.options.clone()
+    fn options(&mut self) -> &Vec<Item> {
+        &self.options
     }
 }

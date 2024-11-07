@@ -1,6 +1,7 @@
+use rkyv::{Archive, Deserialize, Serialize};
 use std::fmt::{self, Display, Formatter};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Archive, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Exec {
     pub program: String,
     pub args: Vec<String>,
@@ -17,13 +18,13 @@ impl Exec {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Archive, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Item {
     text: String,
     item_type: ItemType,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Archive, Deserialize, Serialize, PartialEq, Eq)]
 pub enum ItemType {
     Selection,
     Exec { exec: Exec },

@@ -1,6 +1,7 @@
 use crate::{
     config::Config,
     mode::{AppsMode, DmenuMode, FilesMode, Match, Mode, RunMode},
+    recent::RecentItems,
     render::{CpuRenderer, Renderer},
     ui::{
         column, container, text_box, DynamicList, Editor, Element, Length, ListContent, SizedBox,
@@ -45,6 +46,7 @@ pub struct App {
     config: Config,
     exit: bool,
     root: Element,
+    recent: RecentItems,
     list_content: ListContent,
     matches: Vec<Match>,
     editor: Editor,
@@ -87,6 +89,7 @@ impl WinitApp for App {
         let list_content = ListContent::new();
         let root = build_ui(mode.name(), &config, editor.clone(), list_content.clone());
         let matches = mode.run(""); // initial
+        let recent = RecentItems::load_or_default().unwrap();
         let mut app = App {
             window,
             mode,
@@ -95,6 +98,7 @@ impl WinitApp for App {
             config,
             exit: false,
             root,
+            recent,
             list_content,
             editor,
             matches,
@@ -145,7 +149,13 @@ impl App {
             } else if event.physical_key == PhysicalKey::Code(KeyCode::Enter) {
                 is_dirty = true;
                 self.exit = true;
-                self.mode.exec(&self.matches[self.selected].item);
+                if let Err(e) = self.recent.add_and_save(
+                    &self.mode.name(),
+                    self.matches[self.selected].item().clone(),
+                ) {
+                    log::error!("Failed to save recent items: {e}");
+                }
+                self.mode.exec(&self.matches[self.selected].item().clone());
             } else if event.physical_key == PhysicalKey::Code(KeyCode::ArrowDown) {
                 self.selected =
                     (self.selected as i64 + 1).rem_euclid(self.matches.len() as i64) as usize;
@@ -172,10 +182,15 @@ impl App {
     }
 
     fn update(&mut self) {
-        self.matches = self.mode.run(&self.editor.text());
+        let input = self.editor.text();
+        if input.is_empty() {
+            self.matches = self.recent.get_matches(&self.mode.name());
+        } else {
+            self.matches = self.mode.run(&input);
+        }
         self.list_content
             .update(self.matches.iter().enumerate().map(|(i, m)| {
-                let item_text = format!("{} ({})", m.item, m.score);
+                let item_text = format!("{m}");
                 if i == self.selected {
                     container(text_box(&item_text, self.config.font_size.normal))
                         .bg(self.config.colors.primary)

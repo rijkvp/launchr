@@ -3,7 +3,10 @@ mod dmenu;
 mod files;
 mod run;
 
-use std::process::Command;
+use std::{
+    fmt::{self, Display, Formatter},
+    process::Command,
+};
 
 pub use apps::AppsMode;
 pub use dmenu::DmenuMode;
@@ -17,8 +20,32 @@ use nucleo_matcher::{
 };
 
 pub struct Match {
-    pub item: Item,
-    pub score: u32,
+    item: Item,
+    score: u64,
+}
+
+impl Match {
+    pub fn new(item: Item, score: u64) -> Self {
+        Self { item, score }
+    }
+
+    pub fn item(&self) -> &Item {
+        &self.item
+    }
+
+    pub fn score(&self) -> u64 {
+        self.score
+    }
+}
+
+impl Display for Match {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", self.item)?;
+        if self.score > 0 {
+            write!(f, " ({})", self.score)?;
+        }
+        Ok(())
+    }
 }
 
 pub trait Mode {
@@ -31,7 +58,7 @@ pub trait Mode {
             .into_iter()
             .map(|(item, score)| Match {
                 item: item.clone(),
-                score,
+                score: score as u64,
             })
             .take(64) // Limit the results
             .collect()

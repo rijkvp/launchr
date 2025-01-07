@@ -62,7 +62,7 @@
 
           packages = with pkgs; [
             cargo-flamegraph
-            cargo-outdated
+            cargo-edit
             gnuplot
           ];
 

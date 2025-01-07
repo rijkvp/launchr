@@ -75,6 +75,12 @@ pub enum Length {
     Fill,
 }
 
+impl Into<Length> for u32 {
+    fn into(self) -> Length {
+        Length::Fixed(self)
+    }
+}
+
 /// A graphical component in the UI
 pub trait Widget {
     /// Layout the component and its children, returning the size of the component

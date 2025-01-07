@@ -28,6 +28,10 @@ impl Color {
         self.0[3]
     }
 
+    pub fn from_rgb(red: u8, green: u8, blue: u8) -> Self {
+        Self([red, green, blue, 255])
+    }
+
     pub fn from_rgba(red: u8, green: u8, blue: u8, alpha: u8) -> Self {
         Self([red, green, blue, alpha])
     }

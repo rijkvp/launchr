@@ -8,16 +8,14 @@ const WIDTH: u32 = 1920;
 const HEIGHT: u32 = 1080;
 
 fn create_ui() -> Element {
-    let mut elements = Vec::new();
-    for _ in 0..4 {
-        elements.push(
-            container(Text::new(18.0).with_font("Noto Serif").with_text(TEXT))
-                .width(Length::Fill)
-                .height(Length::Fixed(2 * 18))
-                .into_element(),
-        );
-    }
-    let mut root = container(column(elements))
+    let mut texts = Vec::new();
+    texts.push(
+        container(TextBuilder::new(TEXT).size(24.0).build())
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into_element(),
+    );
+    let mut root = container(column(texts))
         .width(Length::Fill)
         .height(Length::Fill)
         .bg(Color::from_rgba(50, 50, 50, 255))

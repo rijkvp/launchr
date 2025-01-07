@@ -1,4 +1,4 @@
-use super::{container, Color, Element, Length, Rect, UVec2, Widget};
+use super::{Color, Element, Rect, UVec2, Widget};
 use crate::render::{BorrowedBuffer, DrawHandle};
 use cosmic_text::{
     Action, Attrs, CacheKeyFlags, Edit, Family, FontSystem, Metrics, Motion, Shaping, Stretch,
@@ -24,7 +24,7 @@ struct CachcedGlyph {
 
 const DEFAULT_ATTRS: Attrs = Attrs {
     color_opt: None,
-    family: Family::Name("Iosevka Nerd Font"),
+    family: Family::SansSerif,
     stretch: Stretch::Normal,
     style: Style::Normal,
     weight: Weight::NORMAL,
@@ -35,67 +35,110 @@ const DEFAULT_ATTRS: Attrs = Attrs {
 
 const DEFAULT_FONT_SIZE: f32 = 18.0;
 
+pub struct TextBuilder {
+    text: String,
+    size: Option<f32>,
+    font_name: Option<String>,
+}
+
+impl TextBuilder {
+    pub fn new(text: impl Into<String>) -> Self {
+        Self {
+            text: text.into(),
+            size: None,
+            font_name: None,
+        }
+    }
+
+    pub fn size(mut self, size: f32) -> Self {
+        self.size = Some(size);
+        self
+    }
+
+    pub fn font(mut self, font_name: impl Into<String>) -> Self {
+        self.font_name = Some(font_name.into());
+        self
+    }
+
+    pub fn build(self) -> Text {
+        Text::new(
+            &self.text,
+            self.size.unwrap_or(DEFAULT_FONT_SIZE),
+            self.font_name,
+        )
+    }
+}
+
 pub struct Text {
     buffer: cosmic_text::Buffer,
-    font: Option<String>,
-    texture_buf: Vec<u8>,
-    width: u64,
-    height: u64,
+    width: u32,
+    height: u32,
 }
 
 pub fn text(text: &str) -> Text {
-    Text::new(DEFAULT_FONT_SIZE).with_text(text)
+    TextBuilder::new(text).build()
 }
 
 impl Text {
-    pub fn new(font_size: f32) -> Self {
+    fn new(text: &str, size: f32, font_name: Option<String>) -> Self {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
-        let buffer = cosmic_text::Buffer::new(&mut font_system, Metrics::new(font_size, font_size));
+
+        let mut attrs = DEFAULT_ATTRS;
+        if let Some(font) = &font_name {
+            attrs.family = Family::Name(font)
+        }
+
+        let mut buffer = cosmic_text::Buffer::new(&mut font_system, Metrics::new(size, size));
+        buffer.set_text(&mut font_system, text, attrs, Shaping::Basic);
+        buffer.shape_until_scroll(&mut font_system, false);
+
+        let (width, height) = buffer.size();
+        let (width, height) = (
+            width.unwrap_or(0.0).ceil() as u32,
+            height.unwrap_or(0.0).ceil() as u32,
+        );
+
         Self {
             buffer,
-            font: None,
-            texture_buf: Vec::new(),
-            width: 0,
-            height: 0,
+            width,
+            height,
         }
-    }
-
-    pub fn with_text(mut self, text: &str) -> Self {
-        self.set_text(text);
-        self
-    }
-
-    // TOFIX: This does not update the text if already set
-    pub fn with_font(mut self, font_name: impl Into<String>) -> Self {
-        self.font = Some(font_name.into());
-        self
-    }
-
-    pub fn set_text(&mut self, text: &str) {
-        let mut font_system = FONT_SYSTEM.lock().unwrap();
-        let mut attrs = DEFAULT_ATTRS;
-        if let Some(font) = &self.font {
-            attrs.family = Family::Name(&font)
-        }
-        self.buffer
-            .set_text(&mut font_system, text, attrs, Shaping::Basic);
-
-        let (width, height) = self.buffer.size();
-        let (width, height) = (width.unwrap_or(0.0), height.unwrap_or(0.0));
-        self.width = width.ceil() as u64;
-        self.height = height.ceil() as u64;
-        self.texture_buf = vec![0; (self.width * self.height * 4) as usize];
     }
 }
 
 impl Widget for Text {
     fn layout(&mut self, bounds: UVec2) -> UVec2 {
-        self.buffer.set_size(
-            &mut FONT_SYSTEM.lock().unwrap(),
-            Some(bounds.x as f32),
-            Some(bounds.y as f32),
-        );
-        bounds
+        if bounds.x != self.width || bounds.y != self.height {
+            log::debug!("set text buffer to : {}x{}", bounds.x, bounds.y);
+            self.buffer.set_size(
+                &mut FONT_SYSTEM.lock().unwrap(),
+                Some(bounds.x as f32),
+                Some(bounds.y as f32),
+            );
+            // https://github.com/pop-os/cosmic-text/discussions/163
+            let last_run = self.buffer.layout_runs().last().unwrap();
+            self.height = last_run.line_height as u32;
+            self.width = last_run.line_w as u32;
+            log::debug!("method1 layout: {}x{}", self.width, self.height);
+
+            let mut font_system = FONT_SYSTEM.lock().unwrap();
+            let mut swash_cache = SWASH_CACHE.lock().unwrap();
+            let layout_glyph = last_run.glyphs.last().unwrap();
+            let physical_glyph = layout_glyph.physical((0., 0.), 1.0);
+            let glyph = swash_cache
+                .get_image_uncached(&mut font_system, physical_glyph.cache_key)
+                .unwrap();
+
+            self.height = (last_run.line_y as i32 + physical_glyph.y as i32
+                // - glyph.placement.top as i32
+                + glyph.placement.height as i32) as u32;
+            self.width = (physical_glyph.x as i32
+                // + glyph.placement.left as i32
+                + glyph.placement.width as i32) as u32;
+            log::debug!("method2 layout: {}x{}", self.width, self.height);
+        }
+        log::debug!("text layout: {}x{}", self.width, self.height);
+        UVec2::new(self.width, self.height)
     }
 
     fn render(&self, pos: UVec2, draw_handle: &mut DrawHandle) {
@@ -176,10 +219,8 @@ fn convert_image(image: &cosmic_text::SwashImage, color: Color) -> Option<Vec<u8
 }
 
 pub fn text_box(text: &str, font_size: f32) -> Element {
-    container(Text::new(font_size).with_text(text))
-        .width(Length::Fill)
-        .height(Length::Fixed(font_size as u32))
-        .into_element()
+    let text = TextBuilder::new(text).size(font_size).build();
+    text.into_element()
 }
 
 #[derive(Clone)]

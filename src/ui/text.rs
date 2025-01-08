@@ -40,6 +40,7 @@ pub struct TextBuilder {
     size: Option<f32>,
     line_height: Option<f32>,
     font_name: Option<String>,
+    bold: bool,
 }
 
 impl TextBuilder {
@@ -49,6 +50,7 @@ impl TextBuilder {
             size: None,
             line_height: None,
             font_name: None,
+            bold: false,
         }
     }
 
@@ -67,12 +69,18 @@ impl TextBuilder {
         self
     }
 
+    pub fn bold(mut self, bold: bool) -> Self {
+        self.bold = bold;
+        self
+    }
+
     pub fn build(self) -> Text {
         let size = self.size.unwrap_or(DEFAULT_FONT_SIZE);
         Text::new(
             &self.text,
             size,
             self.line_height.unwrap_or(size),
+            self.bold,
             self.font_name,
         )
     }
@@ -89,17 +97,19 @@ pub fn text(text: &str) -> Text {
 }
 
 impl Text {
-    fn new(text: &str, size: f32, line_height: f32, font_name: Option<String>) -> Self {
+    fn new(text: &str, size: f32, line_height: f32, bold: bool, font_name: Option<String>) -> Self {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
 
         let mut attrs = DEFAULT_ATTRS;
         if let Some(font) = &font_name {
             attrs.family = Family::Name(font)
         }
+        attrs.weight = if bold { Weight::BOLD } else { Weight::NORMAL };
 
         let mut buffer =
             cosmic_text::Buffer::new(&mut font_system, Metrics::new(size, line_height));
-        buffer.set_text(&mut font_system, text, attrs, Shaping::Basic);
+        // use advanced shaping to get all font features, like emojis and ligatures
+        buffer.set_text(&mut font_system, text, attrs, Shaping::Advanced);
         buffer.shape_until_scroll(&mut font_system, false);
 
         let (width, height) = buffer.size();
@@ -118,12 +128,22 @@ impl Text {
 
 impl Widget for Text {
     fn layout(&mut self, bounds: UVec2) -> UVec2 {
+        log::debug!("text layout bounds: {}x{}", bounds.x, bounds.y);
         if bounds.x != self.width || bounds.y != self.height {
             self.buffer.set_size(
                 &mut FONT_SYSTEM.lock().unwrap(),
                 Some(bounds.x as f32),
                 Some(bounds.y as f32),
             );
+            self.buffer
+                .shape_until_scroll(&mut FONT_SYSTEM.lock().unwrap(), false);
+            if self.buffer.layout_runs().count() == 0 {
+                log::error!(
+                    "no layout runs for text, bounds are: {}x{}",
+                    bounds.x,
+                    bounds.y
+                );
+            }
             // at the moment there is no build-in way to get the size the text will take in cosmic-text
             // so this computes it manually from the layout runs
             // see also: https://github.com/pop-os/cosmic-text/discussions/163
@@ -234,7 +254,8 @@ impl Editor {
         );
         let mut editor = cosmic_text::Editor::new(buffer);
         editor.with_buffer_mut(|buf| {
-            buf.set_text(&mut font_system, "", DEFAULT_ATTRS, Shaping::Basic); // Intial text must be set
+            buf.set_text(&mut font_system, "", DEFAULT_ATTRS, Shaping::Advanced);
+            // intial text must be set
         });
         Self {
             inner: Rc::new(RefCell::new(editor)),
@@ -250,10 +271,11 @@ impl Editor {
     pub fn handle_key(&mut self, key: KeyCode) -> bool {
         match key {
             KeyCode::Backspace => self.perform_action(Action::Backspace),
+            KeyCode::Delete => self.perform_action(Action::Delete),
             KeyCode::ArrowLeft => self.perform_action(Action::Motion(Motion::Left)),
             KeyCode::ArrowRight => self.perform_action(Action::Motion(Motion::Right)),
-            KeyCode::ArrowUp => self.perform_action(Action::Motion(Motion::Up)),
-            KeyCode::ArrowDown => self.perform_action(Action::Motion(Motion::Down)),
+            KeyCode::Home => self.perform_action(Action::Motion(Motion::Home)),
+            KeyCode::End => self.perform_action(Action::Motion(Motion::End)),
             _ => return false,
         }
         true

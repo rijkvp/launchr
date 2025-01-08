@@ -4,8 +4,8 @@ use crate::{
     recent::RecentItems,
     render::{CpuRenderer, Renderer},
     ui::{
-        column, container, text_box, DynamicList, Editor, Element, Length, ListContent, SizedBox,
-        TextEditor, UVec2, Widget,
+        column, container, DynamicList, Editor, Element, Length, ListContent, SizedBox,
+        TextBuilder, TextEditor, UVec2, Widget,
     },
     winit_app::WinitApp,
 };
@@ -189,17 +189,22 @@ impl App {
             self.matches = self.mode.run(&input);
         }
         self.list_content
-            .update(self.matches.iter().enumerate().map(|(i, m)| {
-                let item_text = format!("{m}");
-                if i == self.selected {
-                    container(text_box(&item_text, self.config.font_size.normal))
-                        .bg(self.config.colors.primary)
-                        .into_element()
+            .update(self.matches.iter().enumerate().map(|(i, r#match)| {
+                let item_text = format!("{match}");
+
+                container(
+                    TextBuilder::new(&item_text)
+                        .size(self.config.font_size.normal)
+                        .build(),
+                )
+                .bg(if i == self.selected {
+                    self.config.colors.primary
                 } else {
-                    container(text_box(&item_text, self.config.font_size.normal))
-                        .bg(self.config.colors.background_second)
-                        .into_element()
-                }
+                    self.config.colors.background
+                })
+                .width(Length::Fill)
+                .padding(4)
+                .into_element()
             }));
         let window_size = self.window.inner_size();
         self.root
@@ -211,7 +216,11 @@ fn build_ui(mode_name: &str, config: &Config, editor: Editor, content: ListConte
     let editor = TextEditor::new(editor, config.font_size.normal);
     let editor_container = container(editor).height(Length::Fixed(config.font_size.normal as u32));
     let root = container(column([
-        text_box(mode_name, config.font_size.large),
+        TextBuilder::new(mode_name)
+            .size(config.font_size.large)
+            .bold(true)
+            .build()
+            .into_element(),
         container(editor_container)
             .padding(4)
             .bg(config.colors.background_second)
@@ -221,7 +230,8 @@ fn build_ui(mode_name: &str, config: &Config, editor: Editor, content: ListConte
             .width(Length::Fill)
             .height(Length::Fixed(2))
             .into_element(),
-        DynamicList::new(content, 20).spacing(8).into_element(),
+        // note that the item_height must be large enough to fit the text
+        DynamicList::new(content, 28).spacing(4).into_element(),
     ]))
     .padding(32)
     .bg(config.colors.background)

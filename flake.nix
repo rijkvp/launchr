@@ -63,8 +63,6 @@
         );
       in
       {
-        checks = { inherit launcher; };
-
         packages.default = launcher;
 
         apps.default = flake-utils.lib.mkApp {
@@ -72,7 +70,6 @@
         };
 
         devShells.default = craneLib.devShell {
-          checks = self.checks.${system};
 
           packages = with pkgs; [
             cargo-flamegraph

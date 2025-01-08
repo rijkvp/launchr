@@ -45,6 +45,7 @@ pub struct App {
     selected: usize,
     config: Config,
     exit: bool,
+    ctrl_pressed: bool,
     root: Element,
     recent: RecentItems,
     list_content: ListContent,
@@ -97,6 +98,7 @@ impl WinitApp for App {
             selected: 0,
             config,
             exit: false,
+            ctrl_pressed: false,
             root,
             recent,
             list_content,
@@ -156,16 +158,26 @@ impl App {
                     log::error!("Failed to save recent items: {e}");
                 }
                 self.mode.exec(&self.matches[self.selected].item().clone());
-            } else if event.physical_key == PhysicalKey::Code(KeyCode::ArrowDown) {
+            } else if event.physical_key == PhysicalKey::Code(KeyCode::ArrowDown)
+                || self.ctrl_pressed && event.physical_key == PhysicalKey::Code(KeyCode::KeyJ)
+            {
                 self.selected =
                     (self.selected as i64 + 1).rem_euclid(self.matches.len() as i64) as usize;
                 log::info!("selected: {}", self.selected);
                 is_dirty = true;
-            } else if event.physical_key == PhysicalKey::Code(KeyCode::ArrowUp) {
+            } else if event.physical_key == PhysicalKey::Code(KeyCode::ArrowUp)
+                || self.ctrl_pressed && event.physical_key == PhysicalKey::Code(KeyCode::KeyK)
+            {
                 self.selected =
                     (self.selected as i64 - 1).rem_euclid(self.matches.len() as i64) as usize;
                 log::info!("selected: {}", self.selected);
                 is_dirty = true;
+            } else if event.physical_key == PhysicalKey::Code(KeyCode::ControlLeft)
+                || event.physical_key == PhysicalKey::Code(KeyCode::ControlRight)
+            {
+                self.ctrl_pressed = true;
+            } else if self.ctrl_pressed && event.physical_key == PhysicalKey::Code(KeyCode::KeyC) {
+                self.exit = true;
             } else {
                 // Editor input
                 if let PhysicalKey::Code(key) = event.physical_key {
@@ -176,6 +188,12 @@ impl App {
                     self.selected = 0;
                     is_dirty = true;
                 }
+            }
+        } else if event.state == ElementState::Released {
+            if event.physical_key == PhysicalKey::Code(KeyCode::ControlLeft)
+                || event.physical_key == PhysicalKey::Code(KeyCode::ControlRight)
+            {
+                self.ctrl_pressed = false;
             }
         }
         is_dirty
@@ -230,7 +248,7 @@ fn build_ui(mode_name: &str, config: &Config, editor: Editor, content: ListConte
             .width(Length::Fill)
             .height(Length::Fixed(2))
             .into_element(),
-        // note that the item_height must be large enough to fit the text
+        // note that the item height must be large enough to fit the text
         DynamicList::new(content, 28).spacing(4).into_element(),
     ]))
     .padding(32)

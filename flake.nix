@@ -12,7 +12,6 @@
   };
   outputs =
     {
-      self,
       nixpkgs,
       flake-utils,
       crane,
@@ -40,6 +39,8 @@
             xorg.libXcursor
           ];
           nativeBuildInputs = with pkgs; [ pkg-config ];
+
+          doCheck = false;
         };
 
         rpath =

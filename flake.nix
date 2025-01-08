@@ -10,14 +10,23 @@
       };
     };
   };
-  outputs = { self, nixpkgs, flake-utils, crane, rust-overlay, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+      crane,
+      rust-overlay,
+      ...
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         pkgs = import nixpkgs {
-          inherit system; 
+          inherit system;
           overlays = [ (import rust-overlay) ];
         };
-        craneLib = (crane.mkLib pkgs).overrideToolchain (p: p.rust-bin.stable.latest.default.override {});
+        craneLib = (crane.mkLib pkgs).overrideToolchain (p: p.rust-bin.stable.latest.default.override { });
 
         commonArgs = {
           src = craneLib.cleanCargoSource ./.;
@@ -33,20 +42,25 @@
           nativeBuildInputs = with pkgs; [ pkg-config ];
         };
 
-        rpath = with pkgs; lib.makeLibraryPath [
-         fontconfig
-         wayland
-         libxkbcommon
-         xorg.libX11
-         xorg.libXcursor
-        ];
+        rpath =
+          with pkgs;
+          lib.makeLibraryPath [
+            fontconfig
+            wayland
+            libxkbcommon
+            xorg.libX11
+            xorg.libXcursor
+          ];
 
-        launcher = craneLib.buildPackage (commonArgs // {
-          cargoArtifacts = craneLib.buildDepsOnly commonArgs;
-          postFixup = ''
-            patchelf $out/bin/launcher --add-rpath ${rpath}
-          '';
-        });
+        launcher = craneLib.buildPackage (
+          commonArgs
+          // {
+            cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+            postFixup = ''
+              patchelf $out/bin/launcher --add-rpath ${rpath}
+            '';
+          }
+        );
       in
       {
         checks = { inherit launcher; };
@@ -68,5 +82,6 @@
 
           LD_LIBRARY_PATH = rpath;
         };
-      });
+      }
+    );
 }

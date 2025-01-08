@@ -38,6 +38,7 @@ const DEFAULT_FONT_SIZE: f32 = 18.0;
 pub struct TextBuilder {
     text: String,
     size: Option<f32>,
+    line_height: Option<f32>,
     font_name: Option<String>,
 }
 
@@ -46,6 +47,7 @@ impl TextBuilder {
         Self {
             text: text.into(),
             size: None,
+            line_height: None,
             font_name: None,
         }
     }
@@ -55,15 +57,22 @@ impl TextBuilder {
         self
     }
 
+    pub fn line_height(mut self, line_height: f32) -> Self {
+        self.line_height = Some(line_height);
+        self
+    }
+
     pub fn font(mut self, font_name: impl Into<String>) -> Self {
         self.font_name = Some(font_name.into());
         self
     }
 
     pub fn build(self) -> Text {
+        let size = self.size.unwrap_or(DEFAULT_FONT_SIZE);
         Text::new(
             &self.text,
-            self.size.unwrap_or(DEFAULT_FONT_SIZE),
+            size,
+            self.line_height.unwrap_or(size),
             self.font_name,
         )
     }
@@ -80,7 +89,7 @@ pub fn text(text: &str) -> Text {
 }
 
 impl Text {
-    fn new(text: &str, size: f32, font_name: Option<String>) -> Self {
+    fn new(text: &str, size: f32, line_height: f32, font_name: Option<String>) -> Self {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
 
         let mut attrs = DEFAULT_ATTRS;
@@ -88,7 +97,8 @@ impl Text {
             attrs.family = Family::Name(font)
         }
 
-        let mut buffer = cosmic_text::Buffer::new(&mut font_system, Metrics::new(size, size));
+        let mut buffer =
+            cosmic_text::Buffer::new(&mut font_system, Metrics::new(size, line_height));
         buffer.set_text(&mut font_system, text, attrs, Shaping::Basic);
         buffer.shape_until_scroll(&mut font_system, false);
 
@@ -109,35 +119,22 @@ impl Text {
 impl Widget for Text {
     fn layout(&mut self, bounds: UVec2) -> UVec2 {
         if bounds.x != self.width || bounds.y != self.height {
-            log::debug!("set text buffer to : {}x{}", bounds.x, bounds.y);
             self.buffer.set_size(
                 &mut FONT_SYSTEM.lock().unwrap(),
                 Some(bounds.x as f32),
                 Some(bounds.y as f32),
             );
-            // https://github.com/pop-os/cosmic-text/discussions/163
-            let last_run = self.buffer.layout_runs().last().unwrap();
-            self.height = last_run.line_height as u32;
-            self.width = last_run.line_w as u32;
-            log::debug!("method1 layout: {}x{}", self.width, self.height);
-
-            let mut font_system = FONT_SYSTEM.lock().unwrap();
-            let mut swash_cache = SWASH_CACHE.lock().unwrap();
-            let layout_glyph = last_run.glyphs.last().unwrap();
-            let physical_glyph = layout_glyph.physical((0., 0.), 1.0);
-            let glyph = swash_cache
-                .get_image_uncached(&mut font_system, physical_glyph.cache_key)
-                .unwrap();
-
-            self.height = (last_run.line_y as i32 + physical_glyph.y as i32
-                // - glyph.placement.top as i32
-                + glyph.placement.height as i32) as u32;
-            self.width = (physical_glyph.x as i32
-                // + glyph.placement.left as i32
-                + glyph.placement.width as i32) as u32;
-            log::debug!("method2 layout: {}x{}", self.width, self.height);
+            // at the moment there is no build-in way to get the size the text will take in cosmic-text
+            // so this computes it manually from the layout runs
+            // see also: https://github.com/pop-os/cosmic-text/discussions/163
+            for run in self.buffer.layout_runs() {
+                self.height = self
+                    .height
+                    .max(run.line_top as u32 + run.line_height as u32);
+                self.width = self.width.max(run.line_w as u32);
+            }
+            log::debug!("text layout: {}x{}", self.width, self.height);
         }
-        log::debug!("text layout: {}x{}", self.width, self.height);
         UVec2::new(self.width, self.height)
     }
 

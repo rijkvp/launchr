@@ -9,28 +9,35 @@ const HEIGHT: u32 = 1080;
 fn create_ui() -> Element {
     let mut texts = Vec::new();
     let items = &[
-        ("This is a test text", None),
-        ("🙃🙃🙃🇳🇱🌶️🤯", Some("Noto Emoji")),
+        ("This is a test text", None, None),
+        ("Emojis 🙃🙃🙃🇳🇱🌶️🤯", Some("Noto Emoji"), None),
         (
             "Ligatures: -> => =>> ->> ->=> ->=>> ->-> ->--> ->-->>",
-            Some("Fira Code"),
+            Some("FiraCode Nerd Font"), None
         ),
+        ("Emojis 🙃🙃🙃🇳🇱🌶️🤯", Some("Noto Emoji"), None),
+        ("The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.", Some("DejaVu Serif"), None),
+        ("The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.", None, Some(84.0))
     ];
-    for (text, font) in items {
-        let mut text_builder = TextBuilder::new(*text).size(64.0);
+    for (n, (text, font, line_height)) in items.into_iter().enumerate() {
+        let mut text_builder = TextBuilder::new(*text).size(56.0);
         if let Some(font) = font {
             text_builder = text_builder.font(*font);
         }
+        if let Some(line_height) = line_height {
+            text_builder = text_builder.line_height(*line_height);
+        }
+        let i = (20 + n * 10) as u8;
         texts.push(
             container(text_builder.build())
-                .bg(Color::from_rgb(20, 20, 20))
+                .bg(Color::from_rgb(i, i, i))
                 .into_element(),
         )
     }
     let mut root = container(column(texts))
         .width(Length::Fill)
         .height(Length::Fill)
-        .bg(Color::from_rgb(50, 50, 50))
+        .bg(Color::from_rgb(200, 200, 200))
         .padding(24)
         .into_element();
 

@@ -4,10 +4,10 @@ mod cpu;
 pub use buffer::*;
 pub use cpu::CpuRenderer;
 
-use crate::ui::{Color, Element, Rect};
+use crate::ui::{Color, DynWidget, Rect};
 
 pub trait Renderer {
-    fn render(&mut self, root: &Element);
+    fn render(&mut self, root: &DynWidget);
 }
 
 pub struct DrawHandle {

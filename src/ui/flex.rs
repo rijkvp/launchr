@@ -1,45 +1,38 @@
+use super::{DynWidget, Length, UVec2, Widget};
 use crate::render::DrawHandle;
 
-use super::{Element, Length, UVec2, Widget};
-
-pub fn column<C, E>(children: C) -> Flex
-where
-    C: IntoIterator<Item = E>,
-    E: Into<Element>,
-{
-    let children: Vec<Element> = children.into_iter().map(|c| c.into()).collect();
-    create_flex(FlexDirection::Column, children)
+pub fn column<W: Widget + 'static>(children: impl IntoIterator<Item = W>) -> Flex {
+    create_flex(
+        FlexDirection::Column,
+        children.into_iter().map(|c| c.into_dyn()).collect(),
+    )
+}
+pub fn row<W: Widget + 'static>(children: impl IntoIterator<Item = W>) -> Flex {
+    create_flex(
+        FlexDirection::Row,
+        children.into_iter().map(|c| c.into_dyn()).collect(),
+    )
 }
 
-pub fn row<C, E>(children: C) -> Flex
-where
-    C: IntoIterator<Item = E>,
-    E: Into<Element>,
-{
-    let children: Vec<Element> = children.into_iter().map(|c| c.into()).collect();
-    create_flex(FlexDirection::Row, children)
-}
-
-fn create_flex(direction: FlexDirection, children: Vec<Element>) -> Flex {
+fn create_flex(direction: FlexDirection, children: Vec<DynWidget>) -> Flex {
     Flex {
         direction,
         children,
-        child_offsets: Vec::new(),
-        padding: 0,
-        width: Length::Auto,
-        height: Length::Auto,
-        layout_size: UVec2::zero(),
+        ..Default::default()
     }
 }
 
+#[derive(Default, Debug, Clone, Copy)]
 pub enum FlexDirection {
+    #[default]
     Row,
     Column,
 }
 
+#[derive(Default)]
 pub struct Flex {
     direction: FlexDirection,
-    children: Vec<Element>,
+    children: Vec<DynWidget>,
     child_offsets: Vec<u32>,
     padding: u32,
     width: Length,

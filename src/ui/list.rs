@@ -1,11 +1,11 @@
 use crate::render::DrawHandle;
 
-use super::{Element, UVec2, Widget};
+use super::{DynWidget, UVec2, Widget};
 use std::{cell::RefCell, rc::Rc};
 
 #[derive(Default)]
 struct ListItems {
-    items: Vec<Element>,
+    items: Vec<DynWidget>,
     dirty: bool,
 }
 
@@ -24,9 +24,9 @@ impl ListContent {
     pub fn update<I, E>(&mut self, new_items: I)
     where
         I: IntoIterator<Item = E>,
-        E: Into<Element>,
+        E: Into<DynWidget>,
     {
-        let mut new_items: Vec<Element> = new_items.into_iter().map(|c| c.into()).collect();
+        let mut new_items: Vec<DynWidget> = new_items.into_iter().map(|c| c.into()).collect();
         let mut inner = self.inner.borrow_mut();
         inner.items.clear();
         inner.items.append(&mut new_items);

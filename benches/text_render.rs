@@ -7,27 +7,26 @@ use launcher::{
 const WIDTH: u32 = 1920;
 const HEIGHT: u32 = 1080;
 
-fn create_ui() -> Element {
+fn create_ui() -> DynWidget {
     let mut texts = Vec::new();
     texts.push(
         container(TextBuilder::new(TEXT).size(24.0).build())
             .width(Length::Fill)
-            .height(Length::Fill)
-            .into_element(),
+            .height(Length::Fill),
     );
     let mut root = container(column(texts))
         .width(Length::Fill)
         .height(Length::Fill)
         .bg(Color::from_rgba(50, 50, 50, 255))
-        .padding(18)
-        .into_element();
+        .padding_all(18)
+        .into_dyn();
 
     root.layout(UVec2::new(WIDTH, HEIGHT));
     root
 }
 
-fn render_ui(root: &Element, draw_handle: &mut DrawHandle) {
-    root.render(UVec2::zero(), draw_handle);
+fn render_ui(root: &DynWidget, draw_handle: &mut DrawHandle) {
+    root.render(UVec2::ZERO, draw_handle);
 }
 
 fn bench_text_render(c: &mut Criterion) {

@@ -4,8 +4,8 @@ use crate::{
     recent::RecentItems,
     render::{CpuRenderer, Renderer},
     ui::{
-        column, container, DynamicList, Editor, Element, Length, ListContent, SizedBox,
-        TextBuilder, TextEditor, UVec2, Widget,
+        column, container, DynWidget, DynamicList, Editor, Length, ListContent, TextBuilder,
+        TextEditor, UVec2, Widget,
     },
     winit_app::WinitApp,
 };
@@ -46,7 +46,7 @@ pub struct App {
     config: Config,
     exit: bool,
     ctrl_pressed: bool,
-    root: Element,
+    root: DynWidget,
     recent: RecentItems,
     list_content: ListContent,
     matches: Vec<Match>,
@@ -221,8 +221,8 @@ impl App {
                     self.config.colors.background
                 })
                 .width(Length::Fill)
-                .padding(4)
-                .into_element()
+                .padding((0, 4)) // must fit within the list item height
+                .into_dyn()
             }));
         let window_size = self.window.inner_size();
         self.root
@@ -230,30 +230,30 @@ impl App {
     }
 }
 
-fn build_ui(mode_name: &str, config: &Config, editor: Editor, content: ListContent) -> Element {
+fn build_ui(mode_name: &str, config: &Config, editor: Editor, content: ListContent) -> DynWidget {
     let editor = TextEditor::new(editor, config.font_size.normal);
-    let editor_container = container(editor).height(Length::Fixed(config.font_size.normal as u32));
     let root = container(column([
-        TextBuilder::new(mode_name)
-            .size(config.font_size.large)
-            .bold(true)
-            .build()
-            .into_element(),
-        container(editor_container)
-            .padding(4)
-            .bg(config.colors.background_second)
-            .into_element(),
-        SizedBox::new()
-            .color(config.colors.foreground)
-            .width(Length::Fill)
-            .height(Length::Fixed(2))
-            .into_element(),
+        container(
+            TextBuilder::new(mode_name)
+                .size(config.font_size.large)
+                .bold(true)
+                .build(),
+        )
+        .padding((0, 8))
+        .into_dyn(),
+        container(
+            container(editor)
+                .padding((0, 8))
+                .bg(config.colors.background_second),
+        )
+        .padding((0, 8))
+        .into_dyn(),
         // note that the item height must be large enough to fit the text
-        DynamicList::new(content, 28).spacing(4).into_element(),
+        DynamicList::new(content, 28).spacing(4).into_dyn(),
     ]))
-    .padding(32)
+    .padding_all(32)
     .bg(config.colors.background)
     .width(Length::Fill)
     .height(Length::Fill);
-    root.into_element()
+    root.into_dyn()
 }

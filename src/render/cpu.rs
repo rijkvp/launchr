@@ -1,5 +1,5 @@
 use super::{DrawHandle, RenderBuffer, Renderer};
-use crate::ui::{Element, UVec2, Widget};
+use crate::ui::{DynWidget, UVec2, Widget};
 use softbuffer::{Context, Surface};
 use std::{num::NonZeroU32, sync::Arc};
 use winit::window::Window;
@@ -24,7 +24,7 @@ impl CpuRenderer {
 }
 
 impl Renderer for CpuRenderer {
-    fn render(&mut self, root: &Element) {
+    fn render(&mut self, root: &DynWidget) {
         let (width, height) = {
             let size = self.window.inner_size();
             (size.width, size.height)
@@ -46,7 +46,7 @@ impl Renderer for CpuRenderer {
         render_buffer.clear();
 
         let mut draw_handle = DrawHandle::from(render_buffer);
-        root.render(UVec2::zero(), &mut draw_handle);
+        root.render(UVec2::ZERO, &mut draw_handle);
 
         self.window.pre_present_notify();
         surface_buffer.present().unwrap();

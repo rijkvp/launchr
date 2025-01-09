@@ -1,4 +1,4 @@
-use super::{Color, Element, Rect, UVec2, Widget};
+use super::{Color, DynWidget, Rect, UVec2, Widget};
 use crate::render::{BorrowedBuffer, DrawHandle};
 use cosmic_text::{
     Action, Attrs, CacheKeyFlags, Edit, Family, FontSystem, Metrics, Motion, Shaping, Stretch,
@@ -92,10 +92,6 @@ pub struct Text {
     height: u32,
 }
 
-pub fn text(text: &str) -> Text {
-    TextBuilder::new(text).build()
-}
-
 impl Text {
     fn new(text: &str, size: f32, line_height: f32, bold: bool, font_name: Option<String>) -> Self {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
@@ -128,8 +124,14 @@ impl Text {
 
 impl Widget for Text {
     fn layout(&mut self, bounds: UVec2) -> UVec2 {
-        log::debug!("text layout bounds: {}x{}", bounds.x, bounds.y);
-        if bounds.x != self.width || bounds.y != self.height {
+        let (buf_width, buf_height) = (
+            self.buffer.size().0.map(|f| f as u32),
+            self.buffer.size().1.map(|f| f as u32),
+        );
+        // only relayout if the bounds have changed
+        // the buffer is always resized to the bounds so we can determine the wrapped text size
+        // afterwards
+        if Some(bounds.x) != buf_width || Some(bounds.y) != buf_height {
             self.buffer.set_size(
                 &mut FONT_SYSTEM.lock().unwrap(),
                 Some(bounds.x as f32),
@@ -143,6 +145,7 @@ impl Widget for Text {
                     bounds.x,
                     bounds.y
                 );
+                panic!("no layout runs for text");
             }
             // at the moment there is no build-in way to get the size the text will take in cosmic-text
             // so this computes it manually from the layout runs
@@ -235,9 +238,9 @@ fn convert_image(image: &cosmic_text::SwashImage, color: Color) -> Option<Vec<u8
     Some(buffer)
 }
 
-pub fn text_box(text: &str, font_size: f32) -> Element {
+pub fn text_box(text: &str, font_size: f32) -> DynWidget {
     let text = TextBuilder::new(text).size(font_size).build();
-    text.into_element()
+    text.into_dyn()
 }
 
 #[derive(Clone)]
@@ -292,6 +295,8 @@ impl Editor {
 
 pub struct TextEditor {
     editor: Editor,
+    width: u32,
+    height: u32,
 }
 
 impl TextEditor {
@@ -302,20 +307,34 @@ impl TextEditor {
                 Metrics::new(font_size, font_size),
             );
         });
-        Self { editor }
+        Self {
+            editor,
+            width: 0,
+            height: 0,
+        }
     }
 }
 
 impl Widget for TextEditor {
     fn layout(&mut self, bounds: UVec2) -> UVec2 {
         self.editor.inner.borrow_mut().with_buffer_mut(|buf| {
-            buf.set_size(
-                &mut FONT_SYSTEM.lock().unwrap(),
-                Some(bounds.x as f32),
-                Some(bounds.y as f32),
+            let (buf_width, buf_height) = (
+                buf.size().0.map(|f| f as u32),
+                buf.size().1.map(|f| f as u32),
             );
+            // only relayout if the bounds have changed
+            if Some(bounds.x) != buf_width || Some(bounds.y) != buf_height {
+                buf.set_size(
+                    &mut FONT_SYSTEM.lock().unwrap(),
+                    Some(bounds.x as f32),
+                    Some(bounds.y as f32),
+                );
+                self.width = bounds.x;
+                self.height = bounds.y.min(buf.metrics().line_height as u32);
+                log::debug!("text editor layout: {}x{}", self.width, self.height);
+            }
         });
-        bounds
+        UVec2::new(self.width, self.height)
     }
 
     fn render(&self, pos: UVec2, draw_handle: &mut DrawHandle) {

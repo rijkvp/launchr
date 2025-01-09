@@ -6,7 +6,7 @@ use launcher::{
 const WIDTH: u32 = 1920;
 const HEIGHT: u32 = 1080;
 
-fn create_ui() -> Element {
+fn create_ui() -> DynWidget {
     let mut texts = Vec::new();
     let items = &[
         ("This is a test text", None, None),
@@ -31,22 +31,22 @@ fn create_ui() -> Element {
         texts.push(
             container(text_builder.build())
                 .bg(Color::from_rgb(i, i, i))
-                .into_element(),
+                .into_dyn(),
         )
     }
     let mut root = container(column(texts))
         .width(Length::Fill)
         .height(Length::Fill)
         .bg(Color::from_rgb(200, 200, 200))
-        .padding(24)
-        .into_element();
+        .padding_all(24)
+        .into_dyn();
 
     root.layout(UVec2::new(WIDTH, HEIGHT));
     root
 }
 
-fn render_ui(root: &Element, draw_handle: &mut DrawHandle) {
-    root.render(UVec2::zero(), draw_handle);
+fn render_ui(root: &DynWidget, draw_handle: &mut DrawHandle) {
+    root.render(UVec2::ZERO, draw_handle);
 }
 
 #[test]

@@ -1,156 +1,68 @@
 use crate::{
     config::Config,
-    mode::{AppsMode, DmenuMode, FilesMode, Match, Mode, RunMode},
+    mode::{Match, Mode},
     recent::RecentItems,
-    render::{CpuRenderer, Renderer},
     ui::{
         column, container, DynWidget, DynamicList, Editor, Length, ListContent, TextBuilder,
         TextEditor, UVec2, Widget,
     },
-    winit_app::WinitApp,
 };
-use clap::Parser;
 use cosmic_text::Action;
-use std::{
-    io::{self, Read},
-    sync::Arc,
-    time::Instant,
-};
 use winit::{
-    dpi::PhysicalSize,
-    event::{ElementState, KeyEvent, WindowEvent},
+    event::{ElementState, KeyEvent},
     keyboard::{KeyCode, PhysicalKey},
-    platform::wayland::WindowAttributesExtWayland,
-    window::{Window, WindowLevel},
 };
 
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct Args {
-    /// dmenu mode
-    #[arg(short, long)]
-    dmenu: bool,
-    /// Prompt to display in dmenu mode
-    #[arg(short, long)]
-    prompt: Option<String>,
-    /// Mode to use
-    #[arg(short, long, default_value = "run")]
-    mode: String,
-}
-
-pub struct App {
+pub struct Launcher {
     mode: Box<dyn Mode>,
-    window: Arc<Window>,
-    renderer: Box<dyn Renderer>,
+    root: DynWidget,
     selected: usize,
     config: Config,
-    exit: bool,
+    close_requested: bool,
     ctrl_pressed: bool,
-    root: DynWidget,
     recent: RecentItems,
     list_content: ListContent,
     matches: Vec<Match>,
     editor: Editor,
 }
 
-impl WinitApp for App {
-    fn start(event_loop: &winit::event_loop::ActiveEventLoop) -> Self {
-        let args: Args = Args::parse();
-        let mut mode: Box<dyn Mode> = if args.dmenu {
-            let mut buffer = String::new();
-            io::stdin()
-                .read_to_string(&mut buffer)
-                .expect("Failed to read from stdin");
-            Box::new(DmenuMode::new(args.prompt, buffer))
-        } else {
-            match args.mode.as_str() {
-                "apps" => Box::new(AppsMode::load()),
-                "run" => Box::new(RunMode::load()),
-                "files" => Box::new(FilesMode::new(dirs::home_dir().unwrap())),
-                other => {
-                    eprintln!("Unknown mode: {}", other);
-                    std::process::exit(1);
-                }
-            }
-        };
-
-        let attributes = Window::default_attributes()
-            .with_title("Launcher")
-            .with_decorations(false)
-            .with_transparent(true)
-            .with_window_level(WindowLevel::AlwaysOnTop)
-            .with_inner_size(PhysicalSize::new(1300, 700))
-            .with_name("launcher", "launcher");
-
-        let window = Arc::new(event_loop.create_window(attributes).unwrap());
-
+impl Launcher {
+    pub fn load(mut mode: Box<dyn Mode>) -> anyhow::Result<Self> {
         let config = Config::default();
-        let renderer: Box<dyn Renderer> = Box::new(CpuRenderer::new(window.clone()));
         let editor = Editor::new();
         let list_content = ListContent::new();
         let root = build_ui(mode.name(), &config, editor.clone(), list_content.clone());
-        let matches = mode.run(""); // initial
-        let recent = RecentItems::load_or_default().unwrap();
-        let mut app = App {
-            window,
+        let matches = mode.run(""); // initial matches
+        Ok(Self {
+            root,
             mode,
-            renderer,
             selected: 0,
             config,
-            exit: false,
+            close_requested: false,
             ctrl_pressed: false,
-            root,
-            recent,
+            recent: RecentItems::load_or_default()?,
             list_content,
-            editor,
             matches,
-        };
-        app.update(); // initial update
-        app
+            editor,
+        })
     }
 
-    fn window_event(
-        &mut self,
-        event_loop: &winit::event_loop::ActiveEventLoop,
-        event: WindowEvent,
-    ) {
-        match event {
-            WindowEvent::CloseRequested => event_loop.exit(),
-            WindowEvent::Resized(e) => {
-                log::debug!("resize window to {}x{}", e.width, e.height);
-                self.root.layout(UVec2::new(e.width, e.height));
-                self.window.request_redraw();
-            }
-            WindowEvent::RedrawRequested => {
-                let time = Instant::now();
-                self.renderer.render(&self.root);
-                log::info!("rendered in {:?}", time.elapsed());
-            }
-            WindowEvent::KeyboardInput { event, .. } => {
-                let is_dirty = self.key_input(event);
-                if is_dirty {
-                    self.update();
-                    self.window.request_redraw();
-                }
-            }
-            _ => {}
-        }
+    pub fn root(&self) -> &DynWidget {
+        &self.root
     }
 
-    fn exit(&self) -> bool {
-        self.exit
+    pub fn resize(&mut self, size: UVec2) {
+        self.root.layout(size);
     }
-}
 
-impl App {
-    fn key_input(&mut self, event: KeyEvent) -> bool {
+    pub fn key_input(&mut self, event: KeyEvent) -> bool {
         let mut is_dirty = false;
         if event.state == ElementState::Pressed {
             if event.physical_key == PhysicalKey::Code(KeyCode::Escape) {
-                self.exit = true;
+                self.close_requested = true;
             } else if event.physical_key == PhysicalKey::Code(KeyCode::Enter) {
                 is_dirty = true;
-                self.exit = true;
+                self.close_requested = true;
                 if let Err(e) = self.recent.add_and_save(
                     &self.mode.name(),
                     self.matches[self.selected].item().clone(),
@@ -177,7 +89,7 @@ impl App {
             {
                 self.ctrl_pressed = true;
             } else if self.ctrl_pressed && event.physical_key == PhysicalKey::Code(KeyCode::KeyC) {
-                self.exit = true;
+                self.close_requested = true;
             } else {
                 // Editor input
                 if let PhysicalKey::Code(key) = event.physical_key {
@@ -199,7 +111,7 @@ impl App {
         is_dirty
     }
 
-    fn update(&mut self) {
+    pub fn update(&mut self) {
         let input = self.editor.text();
         if input.is_empty() {
             self.matches = self.recent.get_matches(&self.mode.name());
@@ -209,7 +121,6 @@ impl App {
         self.list_content
             .update(self.matches.iter().enumerate().map(|(i, r#match)| {
                 let item_text = format!("{match}");
-
                 container(
                     TextBuilder::new(&item_text)
                         .size(self.config.font_size.normal)
@@ -224,9 +135,10 @@ impl App {
                 .padding((0, 4)) // must fit within the list item height
                 .into_dyn()
             }));
-        let window_size = self.window.inner_size();
-        self.root
-            .layout(UVec2::new(window_size.width, window_size.height));
+    }
+
+    pub fn close_requested(&self) -> bool {
+        self.close_requested
     }
 }
 

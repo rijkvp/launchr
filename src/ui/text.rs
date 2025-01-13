@@ -238,11 +238,6 @@ fn convert_image(image: &cosmic_text::SwashImage, color: Color) -> Option<Vec<u8
     Some(buffer)
 }
 
-pub fn text_box(text: &str, font_size: f32) -> DynWidget {
-    let text = TextBuilder::new(text).size(font_size).build();
-    text.into_dyn()
-}
-
 #[derive(Clone)]
 pub struct Editor {
     inner: Rc<RefCell<cosmic_text::Editor<'static>>>,

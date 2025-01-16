@@ -3,8 +3,8 @@ use crate::{
     mode::{Match, Mode},
     recent::RecentItems,
     ui::{
-        column, container, DynWidget, DynamicList, Editor, Length, ListContent, TextBuilder,
-        TextEditor, UVec2, Widget,
+        column, container, DynWidget, DynamicList, Editor, Length, TextBuilder, TextEditor, UVec2,
+        Widget,
     },
 };
 use cosmic_text::Action;
@@ -21,7 +21,7 @@ pub struct Launcher {
     close_requested: bool,
     ctrl_pressed: bool,
     recent: RecentItems,
-    list_content: ListContent,
+    list: DynamicList,
     matches: Vec<Match>,
     editor: Editor,
 }
@@ -30,8 +30,9 @@ impl Launcher {
     pub fn load(mut mode: Box<dyn Mode>) -> anyhow::Result<Self> {
         let config = Config::default();
         let editor = Editor::new();
-        let list_content = ListContent::new();
-        let root = build_ui(mode.name(), &config, editor.clone(), list_content.clone());
+        // note that the item height must be large enough to fit the text
+        let list = DynamicList::new(28, 4);
+        let root = build_ui(mode.name(), &config, editor.clone(), list.clone());
         let matches = mode.run(""); // initial matches
         Ok(Self {
             root,
@@ -41,7 +42,7 @@ impl Launcher {
             close_requested: false,
             ctrl_pressed: false,
             recent: RecentItems::load_or_default()?,
-            list_content,
+            list,
             matches,
             editor,
         })
@@ -73,15 +74,15 @@ impl Launcher {
             } else if event.physical_key == PhysicalKey::Code(KeyCode::ArrowDown)
                 || self.ctrl_pressed && event.physical_key == PhysicalKey::Code(KeyCode::KeyJ)
             {
-                self.selected =
-                    (self.selected as i64 + 1).rem_euclid(self.matches.len() as i64) as usize;
+                let list_length = self.list.max_items().min(self.matches.len());
+                self.selected = (self.selected as i64 + 1).rem_euclid(list_length as i64) as usize;
                 log::info!("selected: {}", self.selected);
                 is_dirty = true;
             } else if event.physical_key == PhysicalKey::Code(KeyCode::ArrowUp)
                 || self.ctrl_pressed && event.physical_key == PhysicalKey::Code(KeyCode::KeyK)
             {
-                self.selected =
-                    (self.selected as i64 - 1).rem_euclid(self.matches.len() as i64) as usize;
+                let list_length = self.list.max_items().min(self.matches.len());
+                self.selected = (self.selected as i64 - 1).rem_euclid(list_length as i64) as usize;
                 log::info!("selected: {}", self.selected);
                 is_dirty = true;
             } else if event.physical_key == PhysicalKey::Code(KeyCode::ControlLeft)
@@ -118,9 +119,10 @@ impl Launcher {
         } else {
             self.matches = self.mode.run(&input);
         }
-        self.list_content
+        self.list
             .update(self.matches.iter().enumerate().map(|(i, r#match)| {
                 let item_text = format!("{match}");
+
                 container(
                     TextBuilder::new(&item_text)
                         .size(self.config.font_size.normal)
@@ -142,7 +144,7 @@ impl Launcher {
     }
 }
 
-fn build_ui(mode_name: &str, config: &Config, editor: Editor, content: ListContent) -> DynWidget {
+fn build_ui(mode_name: &str, config: &Config, editor: Editor, list: DynamicList) -> DynWidget {
     let editor = TextEditor::new(editor, config.font_size.normal);
     let root = container(column([
         container(
@@ -155,13 +157,12 @@ fn build_ui(mode_name: &str, config: &Config, editor: Editor, content: ListConte
         .into_dyn(),
         container(
             container(editor)
-                .padding((0, 8))
+                .padding((4, 8))
                 .bg(config.colors.background_second),
         )
         .padding((0, 8))
         .into_dyn(),
-        // note that the item height must be large enough to fit the text
-        DynamicList::new(content, 28).spacing(4).into_dyn(),
+        list.into_dyn(),
     ]))
     .padding_all(32)
     .bg(config.colors.background)

@@ -4,21 +4,64 @@ use super::{DynWidget, UVec2, Widget};
 use std::{cell::RefCell, rc::Rc};
 
 #[derive(Default)]
-struct ListItems {
+pub struct List {
     items: Vec<DynWidget>,
-    dirty: bool,
+    spacing: u32,
+    item_height: u32,
+    item_width: u32,
+    max_items: usize,
+}
+
+impl List {
+    pub fn new(item_height: u32, spacing: u32) -> Self {
+        Self {
+            item_height,
+            spacing,
+            ..Default::default()
+        }
+    }
+
+    fn relayout_items(&mut self) {
+        log::debug!(
+            "relayout list: max items={}, item width={}",
+            self.max_items,
+            self.item_width
+        );
+        let item_bounds = UVec2::new(self.item_width, self.item_height);
+        for item in self.items.iter_mut().take(self.max_items) {
+            item.layout(item_bounds);
+        }
+    }
+}
+
+impl Widget for List {
+    fn layout(&mut self, bounds: UVec2) -> UVec2 {
+        let new_max_items = (bounds.y / (self.item_height + self.spacing)) as usize;
+        // only relayout if nessessary
+        let relayout = bounds.x != self.item_width || new_max_items > self.max_items;
+        self.item_width = bounds.x;
+        self.max_items = new_max_items;
+        if relayout {
+            self.relayout_items();
+        }
+
+        bounds // always fill whole area
+    }
+
+    fn render(&self, pos: UVec2, draw_handle: &mut DrawHandle) {
+        for (i, child) in self.items.iter().take(self.max_items).enumerate() {
+            let offset = UVec2::new(0, i as u32 * (self.item_height + self.spacing));
+            child.render(pos + offset, draw_handle);
+        }
+    }
 }
 
 #[derive(Clone)]
-pub struct ListContent {
-    inner: Rc<RefCell<ListItems>>,
-}
+pub struct DynamicList(Rc<RefCell<List>>);
 
-impl ListContent {
-    pub fn new() -> Self {
-        Self {
-            inner: Rc::new(RefCell::new(ListItems::default())),
-        }
+impl DynamicList {
+    pub fn new(item_height: u32, spacing: u32) -> Self {
+        Self(Rc::new(RefCell::new(List::new(item_height, spacing))))
     }
 
     pub fn update<I, E>(&mut self, new_items: I)
@@ -27,77 +70,23 @@ impl ListContent {
         E: Into<DynWidget>,
     {
         let mut new_items: Vec<DynWidget> = new_items.into_iter().map(|c| c.into()).collect();
-        let mut inner = self.inner.borrow_mut();
+        let mut inner = self.0.borrow_mut();
         inner.items.clear();
         inner.items.append(&mut new_items);
-        inner.dirty = true;
-    }
-}
-
-pub struct DynamicList {
-    content: ListContent,
-    item_height: u32,
-    spacing: u32,
-    current_width: u32,
-    max_items: usize,
-}
-
-impl DynamicList {
-    pub fn new(content: ListContent, item_height: u32) -> Self {
-        Self {
-            content,
-            item_height,
-            spacing: 0,
-            current_width: 0,
-            max_items: 0,
-        }
+        inner.relayout_items();
     }
 
-    pub fn spacing(mut self, spacing: u32) -> Self {
-        self.spacing = spacing;
-        self
+    pub fn max_items(&self) -> usize {
+        self.0.borrow().max_items
     }
 }
 
 impl Widget for DynamicList {
     fn layout(&mut self, bounds: UVec2) -> UVec2 {
-        let mut inner = self.content.inner.borrow_mut();
-        let max_items = (bounds.y / (self.item_height + self.spacing)) as usize;
-        // only relayout childs if width  has changed or items have changed
-        if bounds.x != self.current_width || max_items > self.max_items || inner.dirty {
-            log::debug!(
-                "relayout list (max. {} items): {}x{}",
-                max_items,
-                bounds.x,
-                bounds.y
-            );
-
-            // Bounds for each child is constant
-            let child_bounds = UVec2::new(bounds.x, self.item_height);
-            for child in inner.items.iter_mut().take(max_items as usize) {
-                child.layout(child_bounds);
-            }
-
-            self.current_width = bounds.x;
-            inner.dirty = false;
-        }
-        self.max_items = max_items;
-
-        bounds // always fill whole area
+        self.0.borrow_mut().layout(bounds)
     }
 
     fn render(&self, pos: UVec2, draw_handle: &mut DrawHandle) {
-        for (i, child) in self
-            .content
-            .inner
-            .borrow()
-            .items
-            .iter()
-            .take(self.max_items)
-            .enumerate()
-        {
-            let offset = UVec2::new(0, i as u32 * (self.item_height + self.spacing));
-            child.render(pos + offset, draw_handle);
-        }
+        self.0.borrow().render(pos, draw_handle);
     }
 }

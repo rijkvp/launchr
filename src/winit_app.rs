@@ -82,13 +82,6 @@ impl ApplicationHandler for WinitApp {
                     if self.launcher.key_input(event) {
                         self.launcher.update();
                         window.request_redraw();
-                        // Required because ListContent changes layout internally
-                        // TODO: move inside launcher.update()?
-                        // TODO: Optimize ListContent to only relayout if necessary and handle its
-                        // state internally
-                        let window_size = window.inner_size();
-                        self.launcher
-                            .resize(UVec2::new(window_size.width, window_size.height));
                     }
                 }
                 _ => {}

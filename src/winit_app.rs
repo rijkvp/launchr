@@ -3,7 +3,7 @@ use crate::{
     render::{CpuRenderer, Renderer},
     ui::UVec2,
 };
-use std::{sync::Arc, time::Instant};
+use std::{sync::Arc, thread, time::Instant};
 use winit::{
     application::ApplicationHandler,
     dpi::PhysicalSize,
@@ -26,6 +26,10 @@ enum AppState {
     },
 }
 
+pub enum UserEvent {
+    Test(i64),
+}
+
 impl WinitApp {
     pub fn new(launcher: Launcher) -> Self {
         Self {
@@ -36,13 +40,18 @@ impl WinitApp {
 
     pub fn run(mut self) {
         log::info!("starting winit application");
-        let event_loop = EventLoop::new().unwrap();
+        let event_loop = EventLoop::<UserEvent>::with_user_event().build().unwrap();
         event_loop.set_control_flow(ControlFlow::Wait);
+        let proxy = event_loop.create_proxy();
+        thread::spawn(move || {
+            thread::sleep(std::time::Duration::from_secs(2));
+            let _ = proxy.send_event(UserEvent::Test(42));
+        });
         event_loop.run_app(&mut self).unwrap();
     }
 }
 
-impl ApplicationHandler for WinitApp {
+impl ApplicationHandler<UserEvent> for WinitApp {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let attributes = Window::default_attributes()
             .with_title("Launcher")
@@ -57,6 +66,10 @@ impl ApplicationHandler for WinitApp {
             renderer: Box::new(CpuRenderer::new(window)),
         };
         self.launcher.update(); // initial update
+    }
+
+    fn user_event(&mut self, _: &ActiveEventLoop, event: UserEvent) {
+        self.launcher.user_event(event);
     }
 
     fn window_event(

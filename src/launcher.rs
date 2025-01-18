@@ -6,6 +6,7 @@ use crate::{
         column, container, DynWidget, DynamicList, Editor, Length, TextBuilder, TextEditor, UVec2,
         Widget,
     },
+    winit_app::UserEvent,
 };
 use cosmic_text::Action;
 use winit::{
@@ -54,6 +55,12 @@ impl Launcher {
 
     pub fn resize(&mut self, size: UVec2) {
         self.root.layout(size);
+    }
+
+    pub fn user_event(&self, event: UserEvent) {
+        match event {
+            UserEvent::Test(i) => log::info!("received test event: {}", i),
+        }
     }
 
     pub fn key_input(&mut self, event: KeyEvent) -> bool {

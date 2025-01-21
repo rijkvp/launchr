@@ -1,12 +1,12 @@
 use crate::{
     config::Config,
-    mode::{Match, Mode},
+    mode::{Match, Mode2},
     recent::RecentItems,
     ui::{
         column, container, DynWidget, DynamicList, Editor, Length, TextBuilder, TextEditor, UVec2,
         Widget,
     },
-    winit_app::UserEvent,
+    winit_app::{EventHandle, UserEvent},
 };
 use cosmic_text::Action;
 use winit::{
@@ -15,7 +15,7 @@ use winit::{
 };
 
 pub struct Launcher {
-    mode: Box<dyn Mode>,
+    mode: Box<dyn Mode2>,
     root: DynWidget,
     selected: usize,
     config: Config,
@@ -28,13 +28,12 @@ pub struct Launcher {
 }
 
 impl Launcher {
-    pub fn load(mut mode: Box<dyn Mode>) -> anyhow::Result<Self> {
+    pub fn load(mode: Box<dyn Mode2>) -> anyhow::Result<Self> {
         let config = Config::default();
         let editor = Editor::new();
         // note that the item height must be large enough to fit the text
         let list = DynamicList::new(28, 4);
         let root = build_ui(mode.name(), &config, editor.clone(), list.clone());
-        let matches = mode.run(""); // initial matches
         Ok(Self {
             root,
             mode,
@@ -44,9 +43,13 @@ impl Launcher {
             ctrl_pressed: false,
             recent: RecentItems::load_or_default()?,
             list,
-            matches,
+            matches: Vec::new(),
             editor,
         })
+    }
+
+    pub fn start(&mut self, event_handle: EventHandle) {
+        self.mode.start(event_handle);
     }
 
     pub fn root(&self) -> &DynWidget {
@@ -57,9 +60,11 @@ impl Launcher {
         self.root.layout(size);
     }
 
-    pub fn user_event(&self, event: UserEvent) {
+    pub fn user_event(&mut self, event: UserEvent) {
         match event {
-            UserEvent::Test(i) => log::info!("received test event: {}", i),
+            UserEvent::Update => {
+                self.update();
+            }
         }
     }
 
@@ -77,7 +82,8 @@ impl Launcher {
                 ) {
                     log::error!("Failed to save recent items: {e}");
                 }
-                self.mode.exec(&self.matches[self.selected].item().clone());
+                // TODO: get exec working
+                // self.mode.exec(&self.matches[self.selected].item().clone());
             } else if event.physical_key == PhysicalKey::Code(KeyCode::ArrowDown)
                 || self.ctrl_pressed && event.physical_key == PhysicalKey::Code(KeyCode::KeyJ)
             {
@@ -120,12 +126,14 @@ impl Launcher {
     }
 
     pub fn update(&mut self) {
+        log::info!("handling update");
         let input = self.editor.text();
-        if input.is_empty() {
-            self.matches = self.recent.get_matches(&self.mode.name());
-        } else {
-            self.matches = self.mode.run(&input);
-        }
+        // TODO: recents rework
+        // if input.is_empty() {
+        //     self.matches = self.recent.get_matches(&self.mode.name());
+        // } else {
+        self.matches = self.mode.update(&input);
+        // }
         self.list
             .update(self.matches.iter().enumerate().map(|(i, r#match)| {
                 let item_text = format!("{match}");

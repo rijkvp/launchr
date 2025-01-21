@@ -10,7 +10,7 @@ mod winit_app;
 
 use clap::Parser;
 use launcher::Launcher;
-use mode::{AppsMode, DmenuMode, FilesMode, Mode, RunMode};
+use mode::{AppsMode, DmenuMode, FilesMode, Mode, RunMode, TestMode};
 use std::io::{stdin, Read};
 use winit_app::WinitApp;
 
@@ -52,7 +52,7 @@ fn main() {
             }
         }
     };
-    match Launcher::load(mode) {
+    match Launcher::load(Box::new(TestMode::default())) {
         Ok(launcher) => WinitApp::new(launcher).run(),
         Err(e) => {
             eprintln!("Failed to load launcher: {e}");

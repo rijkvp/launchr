@@ -3,12 +3,12 @@ use crate::{
     render::{CpuRenderer, Renderer},
     ui::UVec2,
 };
-use std::{sync::Arc, thread, time::Instant};
+use std::{sync::Arc, time::Instant};
 use winit::{
     application::ApplicationHandler,
     dpi::PhysicalSize,
     event::WindowEvent,
-    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
+    event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy},
     platform::wayland::WindowAttributesExtWayland,
     window::{Window, WindowId, WindowLevel},
 };
@@ -27,7 +27,20 @@ enum AppState {
 }
 
 pub enum UserEvent {
-    Test(i64),
+    Update,
+}
+
+#[derive(Debug, Clone)]
+pub struct EventHandle {
+    proxy: EventLoopProxy<UserEvent>,
+}
+
+impl EventHandle {
+    pub fn send_update(&self) {
+        if let Err(e) = self.proxy.send_event(UserEvent::Update) {
+            log::error!("failed to send update event: {}", e);
+        }
+    }
 }
 
 impl WinitApp {
@@ -43,10 +56,7 @@ impl WinitApp {
         let event_loop = EventLoop::<UserEvent>::with_user_event().build().unwrap();
         event_loop.set_control_flow(ControlFlow::Wait);
         let proxy = event_loop.create_proxy();
-        thread::spawn(move || {
-            thread::sleep(std::time::Duration::from_secs(2));
-            let _ = proxy.send_event(UserEvent::Test(42));
-        });
+        self.launcher.start(EventHandle { proxy });
         event_loop.run_app(&mut self).unwrap();
     }
 }
@@ -69,7 +79,10 @@ impl ApplicationHandler<UserEvent> for WinitApp {
     }
 
     fn user_event(&mut self, _: &ActiveEventLoop, event: UserEvent) {
-        self.launcher.user_event(event);
+        if let AppState::Running { window, .. } = &mut self.window {
+            self.launcher.user_event(event);
+            window.request_redraw();
+        }
     }
 
     fn window_event(

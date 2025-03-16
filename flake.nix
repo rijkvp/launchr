@@ -53,21 +53,21 @@
             xorg.libXcursor
           ];
 
-        launcher = craneLib.buildPackage (
+        launchr = craneLib.buildPackage (
           commonArgs
           // {
             cargoArtifacts = craneLib.buildDepsOnly commonArgs;
             postFixup = ''
-              patchelf $out/bin/launcher --add-rpath ${rpath}
+              patchelf $out/bin/launchr --add-rpath ${rpath}
             '';
           }
         );
       in
       {
-        packages.default = launcher;
+        packages.default = launchr;
 
         apps.default = flake-utils.lib.mkApp {
-          drv = launcher;
+          drv = launchr;
         };
 
         devShells.default = craneLib.devShell {

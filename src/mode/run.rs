@@ -1,23 +1,23 @@
-use super::Mode;
+use super::SimpleMode;
 use crate::{
     file_finder,
-    item::{Exec, Item, ItemType},
+    item::{Exec, Item, Action},
 };
 
 pub struct RunMode {
-    options: Vec<Item>,
+    executables: Vec<Item>,
 }
 
 impl RunMode {
     pub fn load() -> Self {
         // TODO: Filter on executable files
         Self {
-            options: file_finder::find_files_from_env("PATH", &|_| true)
+            executables: file_finder::find_files_from_env("PATH", &|_| true)
                 .into_iter()
                 .map(|path| {
                     Item::new(
                         path.file_name().unwrap().to_string_lossy().to_string(),
-                        ItemType::Exec {
+                        Action::Exec {
                             exec: Exec {
                                 program: path.to_string_lossy().to_string(),
                                 args: Vec::new(),
@@ -30,16 +30,12 @@ impl RunMode {
     }
 }
 
-impl Mode for RunMode {
+impl SimpleMode for RunMode {
     fn name(&self) -> &str {
         "Run"
     }
 
-    fn options(&mut self) -> &Vec<Item> {
-        &self.options
-    }
-
-    fn exec(&self, item: &Item) {
-        super::exec_item(item);
+    fn get_items(&mut self) -> &Vec<Item> {
+        &self.executables
     }
 }

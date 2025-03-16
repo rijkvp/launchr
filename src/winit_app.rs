@@ -56,7 +56,7 @@ impl WinitApp {
         let event_loop = EventLoop::<UserEvent>::with_user_event().build().unwrap();
         event_loop.set_control_flow(ControlFlow::Wait);
         let proxy = event_loop.create_proxy();
-        self.launcher.start(EventHandle { proxy });
+        self.launcher.run(EventHandle { proxy });
         event_loop.run_app(&mut self).unwrap();
     }
 }

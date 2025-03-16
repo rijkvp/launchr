@@ -1,4 +1,4 @@
-use super::Mode;
+use super::SimpleMode;
 use crate::item::Item;
 
 pub struct DmenuMode {
@@ -19,17 +19,12 @@ impl DmenuMode {
     }
 }
 
-impl Mode for DmenuMode {
+impl SimpleMode for DmenuMode {
     fn name(&self) -> &str {
         &self.prompt
     }
 
-    fn options(&mut self) -> &Vec<Item> {
+    fn get_items(&mut self) -> &Vec<Item> {
         &self.options
-    }
-
-    fn exec(&self, item: &Item) {
-        // Print the selection
-        println!("{}", item);
     }
 }

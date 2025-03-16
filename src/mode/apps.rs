@@ -1,5 +1,5 @@
-use super::Mode;
-use crate::item::{Exec, ItemType};
+use super::SimpleMode;
+use crate::item::{Exec, Action};
 use crate::{file_finder, item::Item};
 use rayon::prelude::*;
 use std::io::BufRead;
@@ -17,17 +17,13 @@ impl AppsMode {
     }
 }
 
-impl Mode for AppsMode {
+impl SimpleMode for AppsMode {
     fn name(&self) -> &str {
         "Applications"
     }
 
-    fn options(&mut self) -> &Vec<Item> {
+    fn get_items(&mut self) -> &Vec<Item> {
         &self.options
-    }
-
-    fn exec(&self, item: &Item) {
-        super::exec_item(item);
     }
 }
 
@@ -83,7 +79,7 @@ fn read_desktop_file(path: &Path) -> Option<Item> {
     let exec = exec_args.expand();
 
     log::debug!("read desktop file: {} -> {:?}", name, exec);
-    Some(Item::new(name, ItemType::Exec { exec }))
+    Some(Item::new(name, Action::Exec { exec }))
 }
 
 #[derive(Debug, Clone, PartialEq)]

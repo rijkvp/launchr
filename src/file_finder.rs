@@ -1,4 +1,4 @@
-use crate::item::{Item, ItemType};
+use crate::item::{Action, Item};
 use ignore::WalkBuilder;
 use rayon::prelude::*;
 use std::{
@@ -55,7 +55,8 @@ pub fn find_all_files(root: &Path) -> Vec<Item> {
                     .unwrap()
                     .to_string_lossy()
                     .to_string(),
-                ItemType::File {
+                Action::File {
+                    path: root.join(entry.path()),
                     is_dir: entry.file_type().map(|f| f.is_dir()).unwrap_or(false),
                 },
             )

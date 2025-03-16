@@ -1,14 +1,13 @@
+use bincode::{Decode, Encode};
+
 use crate::{item::Item, mode::Match};
-use rkyv::{
-    api::high::to_bytes_in, rancor::Error, ser::writer::IoWriter, Archive, Deserialize, Serialize,
-};
 use std::{
     collections::BTreeMap,
     fs::{self, File},
     time::{Instant, SystemTime, UNIX_EPOCH},
 };
 
-#[derive(Archive, Deserialize, Serialize)]
+#[derive(Encode, Decode)]
 struct RecentItem {
     item: Item,
     time: u64,
@@ -24,24 +23,26 @@ impl RecentItem {
     }
 }
 
-#[derive(Default, Archive, Deserialize, Serialize)]
+#[derive(Default, Encode, Decode)]
 pub struct RecentItems {
     items: BTreeMap<String, Vec<RecentItem>>,
 }
 
+const STATE_DIR_NAME: &str = env!("CARGO_CRATE_NAME");
+
 impl RecentItems {
     pub fn load_or_default() -> anyhow::Result<Self> {
         let start_instant = Instant::now();
-        let state_dir = dirs::state_dir().unwrap().join("launcher");
+        let state_dir = dirs::state_dir().unwrap().join(STATE_DIR_NAME);
         fs::create_dir_all(&state_dir)?;
         let path = state_dir.join("recent");
         if !path.exists() {
             return Ok(Self::default());
         }
-        let bytes = fs::read(path)?;
-        let deserialized = rkyv::from_bytes::<_, Error>(&bytes)?;
+        let mut file = File::open(path)?;
+        let res: Self = bincode::decode_from_std_read(&mut file, bincode::config::standard())?;
         log::info!("loaded recent items in {:?}", start_instant.elapsed());
-        Ok(deserialized)
+        Ok(res)
     }
 
     pub fn add_and_save(&mut self, mode: &str, item: Item) -> anyhow::Result<()> {
@@ -57,9 +58,8 @@ impl RecentItems {
         let state_dir = dirs::state_dir().unwrap().join("launcher");
         fs::create_dir_all(&state_dir)?;
         let file = state_dir.join("recent");
-        let file = File::create(file)?;
-        let mut io_writer = IoWriter::new(file);
-        to_bytes_in::<_, Error>(self, &mut io_writer)?;
+        let mut file = File::create(file)?;
+        bincode::encode_into_std_write(&self, &mut file, bincode::config::standard())?;
         Ok(())
     }
 

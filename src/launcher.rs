@@ -1,6 +1,6 @@
 use crate::{
     config::Config,
-    mode::{Match, Mode2},
+    mode::{Match, Mode},
     recent::RecentItems,
     ui::{
         column, container, DynWidget, DynamicList, Editor, Length, TextBuilder, TextEditor, UVec2,
@@ -15,7 +15,7 @@ use winit::{
 };
 
 pub struct Launcher {
-    mode: Box<dyn Mode2>,
+    mode: Box<dyn Mode>,
     root: DynWidget,
     selected: usize,
     config: Config,
@@ -28,7 +28,7 @@ pub struct Launcher {
 }
 
 impl Launcher {
-    pub fn load(mode: Box<dyn Mode2>) -> anyhow::Result<Self> {
+    pub fn load(mode: Box<dyn Mode>) -> anyhow::Result<Self> {
         let config = Config::default();
         let editor = Editor::new();
         // note that the item height must be large enough to fit the text
@@ -48,8 +48,8 @@ impl Launcher {
         })
     }
 
-    pub fn start(&mut self, event_handle: EventHandle) {
-        self.mode.start(event_handle);
+    pub fn run(&mut self, event_handle: EventHandle) {
+        self.mode.run(event_handle);
     }
 
     pub fn root(&self) -> &DynWidget {
@@ -82,6 +82,7 @@ impl Launcher {
                 ) {
                     log::error!("Failed to save recent items: {e}");
                 }
+                self.matches.swap_remove(self.selected).exec();
                 // TODO: get exec working
                 // self.mode.exec(&self.matches[self.selected].item().clone());
             } else if event.physical_key == PhysicalKey::Code(KeyCode::ArrowDown)

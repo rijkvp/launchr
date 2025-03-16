@@ -1,5 +1,5 @@
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
-use launcher::{
+use launchr::{
     render::{DrawHandle, OnwedBuffer},
     ui::*,
 };
@@ -10,7 +10,7 @@ const HEIGHT: u32 = 1080;
 fn create_ui() -> DynWidget {
     let mut texts = Vec::new();
     texts.push(
-        container(TextBuilder::new(TEXT).size(24.0).build())
+        container(TextBuilder::new(TEXT).font("Noto Sans").size(24.0).build())
             .width(Length::Fill)
             .height(Length::Fill),
     );

@@ -101,7 +101,7 @@ impl ApplicationHandler<UserEvent> for WinitApp {
                 }
                 WindowEvent::RedrawRequested => {
                     let time = Instant::now();
-                    renderer.render(&self.launcher.root());
+                    renderer.render(self.launcher.root());
                     log::info!("rendered in {:?}", time.elapsed());
                 }
                 WindowEvent::KeyboardInput { event, .. } => {

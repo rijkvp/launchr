@@ -201,7 +201,7 @@ fn unescape_string(input: &str) -> String {
             result.push(c);
         }
     }
-    return result;
+    result
 }
 
 /// Unquote a string argument according to the Desktop Entry Specification
@@ -240,7 +240,7 @@ fn unquote_args(input: &str) -> Vec<String> {
     if !current.is_empty() {
         args.push(current);
     }
-    return args;
+    args
 }
 
 #[cfg(test)]

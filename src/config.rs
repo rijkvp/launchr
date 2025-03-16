@@ -1,18 +1,11 @@
 use crate::ui::Color;
 
+#[derive(Default)]
 pub struct Config {
     pub font_size: FontSizeConfig,
     pub colors: ColorConfig,
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            font_size: FontSizeConfig::default(),
-            colors: ColorConfig::default(),
-        }
-    }
-}
 
 pub struct FontSizeConfig {
     pub normal: f32,

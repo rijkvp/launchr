@@ -11,7 +11,6 @@ pub use container::*;
 pub use flex::*;
 pub use list::*;
 pub use math::*;
-pub use sized_box::*;
 pub use text::*;
 
 use crate::render::DrawHandle;

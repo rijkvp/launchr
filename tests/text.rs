@@ -1,4 +1,4 @@
-use launcher::{
+use launchr::{
     render::{DrawHandle, OnwedBuffer},
     ui::*,
 };
@@ -28,7 +28,7 @@ fn create_ui() -> DynWidget {
             Some(84.0),
         ),
     ];
-    for (n, (text, font, line_height)) in items.into_iter().enumerate() {
+    for (n, (text, font, line_height)) in items.iter().enumerate() {
         let mut text_builder = TextBuilder::new(*text).size(56.0);
         if let Some(font) = font {
             text_builder = text_builder.font(*font);

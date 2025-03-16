@@ -78,8 +78,8 @@ pub enum Length {
     Fill,
 }
 
-impl Into<Length> for u32 {
-    fn into(self) -> Length {
-        Length::Fixed(self)
+impl From<u32> for Length {
+    fn from(val: u32) -> Self {
+        Length::Fixed(val)
     }
 }

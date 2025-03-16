@@ -1,5 +1,5 @@
 use criterion::{Criterion, criterion_group, criterion_main};
-use launcher::file_finder;
+use launchr::file_finder;
 use std::ffi::OsStr;
 
 fn bench_desktop_files(c: &mut Criterion) {

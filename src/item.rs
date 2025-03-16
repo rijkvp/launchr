@@ -93,7 +93,7 @@ pub struct Exec {
 impl Exec {
     pub fn command(&self) -> String {
         let mut cmd = String::from(&self.program);
-        if self.args.len() > 0 {
+        if !self.args.is_empty() {
             cmd.push(' ');
             cmd.push_str(&self.args.join(" "));
         }

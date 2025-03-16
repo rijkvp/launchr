@@ -79,7 +79,7 @@ impl Launcher {
                 self.close_requested = true;
                 if let Err(e) = self
                     .recent
-                    .add_and_save(&self.mode.name(), self.matches[self.selected].item.clone())
+                    .add_and_save(self.mode.name(), self.matches[self.selected].item.clone())
                 {
                     log::error!("Failed to save recent items: {e}");
                 }
@@ -116,12 +116,8 @@ impl Launcher {
                     is_dirty = true;
                 }
             }
-        } else if event.state == ElementState::Released {
-            if event.physical_key == PhysicalKey::Code(KeyCode::ControlLeft)
-                || event.physical_key == PhysicalKey::Code(KeyCode::ControlRight)
-            {
-                self.ctrl_pressed = false;
-            }
+        } else if event.state == ElementState::Released && (event.physical_key == PhysicalKey::Code(KeyCode::ControlLeft) || event.physical_key == PhysicalKey::Code(KeyCode::ControlRight)) {
+            self.ctrl_pressed = false;
         }
         is_dirty
     }
@@ -133,7 +129,7 @@ impl Launcher {
             self.matches
                 .extend(
                     self.recent
-                        .get_matches(&self.mode.name())
+                        .get_matches(self.mode.name())
                         .into_iter()
                         .map(|item| Match {
                             item,

@@ -1,4 +1,4 @@
-use super::{Color, DynWidget, Rect, UVec2, Widget};
+use super::{Color, Rect, UVec2, Widget};
 use crate::render::{BorrowedBuffer, DrawHandle};
 use cosmic_text::{
     Action, Attrs, CacheKeyFlags, Edit, Family, FontSystem, Metrics, Motion, Shaping, Stretch,
@@ -223,8 +223,9 @@ fn convert_image(image: &cosmic_text::SwashImage, color: Color) -> Option<Vec<u8
 
     match image.content {
         cosmic_text::SwashContent::Mask => {
+            // 8-bit alpha mask
             for i in 0..glyph_size {
-                let j = i << 2;
+                let j = i * 4;
                 let pixel_color = color.premultiply_with(image.data[i]);
                 buffer[j] = pixel_color.red();
                 buffer[j + 1] = pixel_color.green();
@@ -232,7 +233,25 @@ fn convert_image(image: &cosmic_text::SwashImage, color: Color) -> Option<Vec<u8
                 buffer[j + 3] = pixel_color.alpha();
             }
         }
-        _ => panic!("Unsupported image content"),
+        cosmic_text::SwashContent::Color => {
+            // 32-bit RGBA bitmap
+            // This is used by characters that have color, like emojis
+            for i in 0..glyph_size {
+                let j = i * 4;
+                let r = image.data[j];
+                let g = image.data[j + 1];
+                let b = image.data[j + 2];
+                let a = image.data[j + 3];
+
+                let pixel_color = Color::from_rgba(r, g, b, a).premultiply();
+
+                buffer[j] = pixel_color.red();
+                buffer[j + 1] = pixel_color.green();
+                buffer[j + 2] = pixel_color.blue();
+                buffer[j + 3] = pixel_color.alpha();
+            }
+        }
+        cosmic_text::SwashContent::SubpixelMask => panic!("subpixel mask not supported"),
     }
 
     Some(buffer)
@@ -241,6 +260,12 @@ fn convert_image(image: &cosmic_text::SwashImage, color: Color) -> Option<Vec<u8
 #[derive(Clone)]
 pub struct Editor {
     inner: Rc<RefCell<cosmic_text::Editor<'static>>>,
+}
+
+impl Default for Editor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Editor {

@@ -9,6 +9,12 @@ pub struct SizedBox {
     layout_size: UVec2,
 }
 
+impl Default for SizedBox {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SizedBox {
     pub fn new() -> Self {
         Self {

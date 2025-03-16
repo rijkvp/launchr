@@ -1,6 +1,5 @@
-use bincode::{Decode, Encode};
-
 use crate::item::Item;
+use bincode::{Decode, Encode};
 use std::{
     collections::BTreeMap,
     fs::{self, File},
@@ -29,13 +28,14 @@ pub struct RecentItems {
 }
 
 const STATE_DIR_NAME: &str = env!("CARGO_CRATE_NAME");
+const RECENT_FILE_NAME: &str = "recent";
 
 impl RecentItems {
     pub fn load_or_default() -> anyhow::Result<Self> {
         let start_instant = Instant::now();
         let state_dir = dirs::state_dir().unwrap().join(STATE_DIR_NAME);
         fs::create_dir_all(&state_dir)?;
-        let path = state_dir.join("recent");
+        let path = state_dir.join(RECENT_FILE_NAME);
         if !path.exists() {
             return Ok(Self::default());
         }
@@ -57,9 +57,9 @@ impl RecentItems {
     fn save(&self) -> anyhow::Result<()> {
         let state_dir = dirs::state_dir().unwrap().join(STATE_DIR_NAME);
         fs::create_dir_all(&state_dir)?;
-        let file = state_dir.join("recent");
+        let file = state_dir.join(RECENT_FILE_NAME);
         let mut file = File::create(file)?;
-        bincode::encode_into_std_write(&self, &mut file, bincode::config::standard())?;
+        bincode::encode_into_std_write(self, &mut file, bincode::config::standard())?;
         Ok(())
     }
 

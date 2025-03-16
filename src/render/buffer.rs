@@ -100,7 +100,7 @@ impl DrawHandleImpl for RenderBuffer<'_> {
     }
 
     fn get_bytes(&self) -> &[u8] {
-        &self.buffer
+        self.buffer
     }
 }
 

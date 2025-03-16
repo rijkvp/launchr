@@ -25,7 +25,7 @@ pub fn find_files_from_env<F: Fn(&Path) -> bool + Sync>(env_var: &str, filter: &
 
 fn get_dirs(env_var: &str) -> Vec<PathBuf> {
     if let Ok(path) = env::var(env_var) {
-        return path.split(':').map(|d| PathBuf::from(d)).collect();
+        return path.split(':').map(PathBuf::from).collect();
     }
     vec![]
 }
@@ -73,7 +73,7 @@ pub fn find_all_files(root: &Path, files_tx: mpsc::Sender<FileResult>) {
     let threads = thread::available_parallelism()
         .expect("failed to get parallelism")
         .get();
-    WalkBuilder::new(&root)
+    WalkBuilder::new(root)
         .threads(threads)
         .build_parallel()
         .run(|| {

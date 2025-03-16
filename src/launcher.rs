@@ -1,6 +1,7 @@
 use crate::{
     config::Config,
-    mode::{Match, Mode},
+    item::Item,
+    mode::Mode,
     recent::RecentItems,
     ui::{
         column, container, DynWidget, DynamicList, Editor, Length, TextBuilder, TextEditor, UVec2,
@@ -76,15 +77,14 @@ impl Launcher {
             } else if event.physical_key == PhysicalKey::Code(KeyCode::Enter) {
                 is_dirty = true;
                 self.close_requested = true;
-                if let Err(e) = self.recent.add_and_save(
-                    &self.mode.name(),
-                    self.matches[self.selected].item().clone(),
-                ) {
+                if let Err(e) = self
+                    .recent
+                    .add_and_save(&self.mode.name(), self.matches[self.selected].item.clone())
+                {
                     log::error!("Failed to save recent items: {e}");
                 }
-                self.matches.swap_remove(self.selected).exec();
-                // TODO: get exec working
-                // self.mode.exec(&self.matches[self.selected].item().clone());
+                // Execute the selected match, swap remove so we can move it
+                self.matches.swap_remove(self.selected).item.exec();
             } else if event.physical_key == PhysicalKey::Code(KeyCode::ArrowDown)
                 || self.ctrl_pressed && event.physical_key == PhysicalKey::Code(KeyCode::KeyJ)
             {
@@ -127,17 +127,32 @@ impl Launcher {
     }
 
     pub fn update(&mut self) {
-        log::info!("handling update");
         let input = self.editor.text();
-        // TODO: recents rework
-        // if input.is_empty() {
-        //     self.matches = self.recent.get_matches(&self.mode.name());
-        // } else {
-        self.matches = self.mode.update(&input);
-        // }
+        self.matches.clear();
+        if input.is_empty() {
+            self.matches
+                .extend(
+                    self.recent
+                        .get_matches(&self.mode.name())
+                        .into_iter()
+                        .map(|item| Match {
+                            item,
+                            is_recent: true,
+                        }),
+                );
+        }
+        self.matches
+            .extend(self.mode.update(&input).into_iter().map(|item| Match {
+                item,
+                is_recent: false,
+            }));
+
         self.list
             .update(self.matches.iter().enumerate().map(|(i, r#match)| {
-                let item_text = format!("{match}");
+                let mut item_text = format!("{}", r#match.item);
+                if r#match.is_recent {
+                    item_text.push_str(" (recent)");
+                }
 
                 container(
                     TextBuilder::new(&item_text)
@@ -158,6 +173,11 @@ impl Launcher {
     pub fn close_requested(&self) -> bool {
         self.close_requested
     }
+}
+
+struct Match {
+    item: Item,
+    is_recent: bool,
 }
 
 fn build_ui(mode_name: &str, config: &Config, editor: Editor, list: DynamicList) -> DynWidget {

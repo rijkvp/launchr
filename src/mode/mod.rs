@@ -3,30 +3,21 @@ mod dmenu;
 mod files;
 mod run;
 
-use std::{
-    fmt::{self, Display, Formatter},
-    sync::{Arc, Mutex},
-    thread,
-};
-
 pub use apps::AppsMode;
 pub use dmenu::DmenuMode;
 pub use files::*;
 pub use run::RunMode;
 
-use crate::{
-    item::{Action, Item},
-    winit_app::EventHandle,
-};
-use nucleo_matcher::{
+use crate::{item::Item, winit_app::EventHandle};
+use nucleo::{
     pattern::{CaseMatching, Normalization, Pattern},
     Config, Matcher,
 };
 
 pub trait Mode {
     fn name(&self) -> &str;
-    fn run(&self, event_handle: EventHandle);
-    fn update(&mut self, input: &str) -> Vec<Match>;
+    fn run(&mut self, event_handle: EventHandle);
+    fn update(&mut self, input: &str) -> Vec<Item>;
 }
 
 pub trait SimpleMode {
@@ -39,94 +30,20 @@ impl<T: SimpleMode> Mode for T {
         self.name()
     }
 
-    fn run(&self, _: EventHandle) {}
+    fn run(&mut self, _: EventHandle) {}
 
-    fn update(&mut self, input: &str) -> Vec<Match> {
-        let mut matcher = Matcher::new(Config::DEFAULT.match_paths());
-        Pattern::parse(input, CaseMatching::Ignore, Normalization::Smart)
-            .match_list(self.get_items(), &mut matcher)
-            .into_iter()
-            .map(|(item, score)| Match {
-                item: item.clone(),
-                score: score as u64,
-            })
-            .take(64) // Limit the results
-            .collect()
+    fn update(&mut self, input: &str) -> Vec<Item> {
+        fuzzy_match(input, self.get_items())
     }
 }
 
-pub struct Match {
-    item: Item,
-    score: u64,
-}
-
-impl Match {
-    pub fn new(item: Item, score: u64) -> Self {
-        Self { item, score }
-    }
-
-    pub fn item(&self) -> &Item {
-        &self.item
-    }
-
-    pub fn score(&self) -> u64 {
-        self.score
-    }
-
-    pub fn exec(self) {
-        self.item.exec();
-    }
-}
-
-impl Display for Match {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}", self.item)?;
-        if self.score > 0 {
-            write!(f, " ({})", self.score)?;
-        }
-        Ok(())
-    }
-}
-
-#[derive(Default)]
-pub struct TestMode {
-    items: Arc<Mutex<Vec<Item>>>,
-}
-
-impl Mode for TestMode {
-    fn name(&self) -> &str {
-        "Multithreading Test"
-    }
-
-    fn run(&self, event_handle: EventHandle) {
-        let items = self.items.clone();
-        thread::spawn(move || {
-            let mut count = 0;
-            loop {
-                thread::sleep(std::time::Duration::from_millis(1000));
-                items
-                    .lock()
-                    .unwrap()
-                    .push(Item::new(format!("test item {}", count), Action::Selection));
-                log::info!("sending update");
-                event_handle.send_update();
-                count += 1;
-            }
-        });
-    }
-
-    fn update(&mut self, input: &str) -> Vec<Match> {
-        log::info!("update: {}", input);
-        let mut matcher = Matcher::new(Config::DEFAULT.match_paths());
-        let options = self.items.lock().unwrap().clone();
-        Pattern::parse(input, CaseMatching::Ignore, Normalization::Smart)
-            .match_list(options, &mut matcher)
-            .into_iter()
-            .map(|(item, score)| Match {
-                item: item.clone(),
-                score: score as u64,
-            })
-            .take(64) // Limit the results
-            .collect()
-    }
+fn fuzzy_match(input: &str, items: &[Item]) -> Vec<Item> {
+    let mut matcher = Matcher::new(Config::DEFAULT.match_paths());
+    Pattern::parse(input, CaseMatching::Ignore, Normalization::Smart)
+        .match_list(items, &mut matcher)
+        .into_iter()
+        // TODO: avoid cloning the item
+        .map(|(item, _)| item.clone())
+        .take(64) // Limit the results
+        .collect()
 }

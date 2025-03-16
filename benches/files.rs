@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use launcher::file_finder;
+use launchr::file_finder;
 
 fn bench_files(c: &mut Criterion) {
     c.bench_function("files", |b| {

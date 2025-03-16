@@ -1,7 +1,8 @@
 use super::SimpleMode;
-use crate::item::{Exec, Action};
+use crate::item::{Action, Exec};
 use crate::{file_finder, item::Item};
 use rayon::prelude::*;
+use std::collections::HashSet;
 use std::io::BufRead;
 use std::{ffi::OsStr, fs::File, io::BufReader, path::Path, time::Instant};
 
@@ -39,20 +40,24 @@ pub fn load_desktop_files() -> Vec<Item> {
     );
 
     timer = Instant::now();
-    let items = desktop_files
+    let entries = desktop_files
         .into_par_iter()
         .filter_map(|path| read_desktop_file(&path))
-        .collect::<Vec<Item>>();
+        .collect::<Vec<DesktopEntry>>();
     log::info!(
         "parsed {} desktop files in {:?}",
-        items.len(),
+        entries.len(),
         timer.elapsed()
     );
+    let set: HashSet<DesktopEntry> = HashSet::from_iter(entries);
+    log::info!("deduplicated desktop files: {}", set.len());
+    let mut items: Vec<Item> = set.into_iter().map(Item::from).collect();
+    items.sort_by(|a, b| a.text.cmp(&b.text));
     items
 }
 
 // Per the Desktop Entry Specification: https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html
-fn read_desktop_file(path: &Path) -> Option<Item> {
+fn read_desktop_file(path: &Path) -> Option<DesktopEntry> {
     let mut name_str = None;
     let mut exec_str = None;
 
@@ -79,7 +84,25 @@ fn read_desktop_file(path: &Path) -> Option<Item> {
     let exec = exec_args.expand();
 
     log::debug!("read desktop file: {} -> {:?}", name, exec);
-    Some(Item::new(name, Action::Exec { exec }))
+    Some(DesktopEntry::new(name, exec))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct DesktopEntry {
+    name: String,
+    exec: Exec,
+}
+
+impl DesktopEntry {
+    fn new(name: String, exec: Exec) -> Self {
+        Self { name, exec }
+    }
+}
+
+impl From<DesktopEntry> for Item {
+    fn from(value: DesktopEntry) -> Self {
+        Item::new(value.name, Action::Exec { exec: value.exec })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

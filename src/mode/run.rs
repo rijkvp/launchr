@@ -1,7 +1,7 @@
 use super::SimpleMode;
 use crate::{
     file_finder,
-    item::{Exec, Item, Action},
+    item::{Action, Exec, Item},
 };
 
 pub struct RunMode {

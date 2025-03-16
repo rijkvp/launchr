@@ -1,6 +1,6 @@
 use bincode::{Decode, Encode};
 
-use crate::{item::Item, mode::Match};
+use crate::item::Item;
 use std::{
     collections::BTreeMap,
     fs::{self, File},
@@ -55,7 +55,7 @@ impl RecentItems {
     }
 
     fn save(&self) -> anyhow::Result<()> {
-        let state_dir = dirs::state_dir().unwrap().join("launcher");
+        let state_dir = dirs::state_dir().unwrap().join(STATE_DIR_NAME);
         fs::create_dir_all(&state_dir)?;
         let file = state_dir.join("recent");
         let mut file = File::create(file)?;
@@ -63,12 +63,9 @@ impl RecentItems {
         Ok(())
     }
 
-    pub fn get_matches(&self, mode: &str) -> Vec<Match> {
+    pub fn get_matches(&self, mode: &str) -> Vec<Item> {
         if let Some(items) = self.items.get(mode) {
-            let mut matches: Vec<Match> = items
-                .iter()
-                .map(|r| Match::new(r.item.clone(), 0))
-                .collect();
+            let mut matches: Vec<Item> = items.iter().map(|r| r.item.clone()).collect();
             matches.reverse();
             matches
         } else {

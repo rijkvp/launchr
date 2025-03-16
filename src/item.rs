@@ -8,8 +8,8 @@ use bincode::{Decode, Encode};
 
 #[derive(Debug, Clone, Encode, Decode, PartialEq, Eq)]
 pub struct Item {
-    text: String,
-    action: Action,
+    pub text: String,
+    pub action: Action,
 }
 
 #[derive(Debug, Clone, Encode, Decode, PartialEq, Eq)]
@@ -27,14 +27,22 @@ impl AsRef<str> for Item {
 
 impl Display for Item {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self.action {
+        match &self.action {
             Action::Selection => write!(f, "{}", self.text),
-            Action::Exec { .. } => write!(f, "[EXEC] {}", self.text),
+            Action::Exec { exec } => write!(
+                f,
+                "[EXEC] {} ({})",
+                self.text,
+                std::iter::once(exec.program.as_str())
+                    .chain(exec.args.iter().map(String::as_str))
+                    .collect::<Vec<_>>()
+                    .join(" "),
+            ),
             Action::File { is_dir, .. } => {
                 write!(
                     f,
                     "[{}] {}",
-                    if is_dir { "DIR " } else { "FILE" },
+                    if *is_dir { "DIR " } else { "FILE" },
                     self.text
                 )
             }
@@ -49,10 +57,6 @@ impl Item {
 
     pub fn new_selection(text: String) -> Self {
         Self::new(text, Action::Selection)
-    }
-
-    pub fn item_type(&self) -> &Action {
-        &self.action
     }
 
     pub fn exec(self) {
@@ -80,7 +84,7 @@ impl Item {
     }
 }
 
-#[derive(Debug, Clone, Encode, Decode, PartialEq, Eq)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq, Eq, Hash)]
 pub struct Exec {
     pub program: String,
     pub args: Vec<String>,

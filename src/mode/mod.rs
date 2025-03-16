@@ -10,8 +10,8 @@ pub use run::RunMode;
 
 use crate::{item::Item, winit_app::EventHandle};
 use nucleo::{
-    pattern::{CaseMatching, Normalization, Pattern},
     Config, Matcher,
+    pattern::{CaseMatching, Normalization, Pattern},
 };
 
 pub trait Mode {

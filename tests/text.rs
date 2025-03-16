@@ -13,11 +13,20 @@ fn create_ui() -> DynWidget {
         ("Emojis 🙃🙃🙃🇳🇱🌶️🤯", Some("Noto Emoji"), None),
         (
             "Ligatures: -> => =>> ->> ->=> ->=>> ->-> ->--> ->-->>",
-            Some("FiraCode Nerd Font"), None
+            Some("FiraCode Nerd Font"),
+            None,
         ),
         ("Emojis 🙃🙃🙃🇳🇱🌶️🤯", Some("Noto Emoji"), None),
-        ("The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.", Some("DejaVu Serif"), None),
-        ("The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.", None, Some(84.0))
+        (
+            "The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.",
+            Some("DejaVu Serif"),
+            None,
+        ),
+        (
+            "The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.",
+            None,
+            Some(84.0),
+        ),
     ];
     for (n, (text, font, line_height)) in items.into_iter().enumerate() {
         let mut text_builder = TextBuilder::new(*text).size(56.0);

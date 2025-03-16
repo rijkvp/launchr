@@ -1,5 +1,5 @@
 use super::DrawHandleImpl;
-use crate::ui::{scale_u8, Color, Rect};
+use crate::ui::{Color, Rect, scale_u8};
 
 fn fill_rect(buf: &mut [u8], buf_width: u32, buf_height: u32, rect: Rect, color: Color) {
     if color.alpha() == 0 {

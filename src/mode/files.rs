@@ -9,7 +9,7 @@ use crate::{
 use std::{
     cell::RefCell,
     path::PathBuf,
-    sync::{mpsc, Arc},
+    sync::{Arc, mpsc},
     thread,
     time::Instant,
 };

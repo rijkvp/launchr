@@ -11,7 +11,7 @@ mod winit_app;
 use clap::Parser;
 use launcher::Launcher;
 use mode::{AppsMode, DmenuMode, FilesMode, Mode, RunMode};
-use std::io::{stdin, Read};
+use std::io::{Read, stdin};
 use winit_app::WinitApp;
 
 #[derive(Parser, Debug)]

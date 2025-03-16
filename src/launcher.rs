@@ -4,8 +4,8 @@ use crate::{
     mode::Mode,
     recent::RecentItems,
     ui::{
-        column, container, DynWidget, DynamicList, Editor, Length, TextBuilder, TextEditor, UVec2,
-        Widget,
+        DynWidget, DynamicList, Editor, Length, TextBuilder, TextEditor, UVec2, Widget, column,
+        container,
     },
     winit_app::{EventHandle, UserEvent},
 };

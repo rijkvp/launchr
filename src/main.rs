@@ -1,18 +1,10 @@
-mod config;
-mod file_finder;
-mod item;
-mod launcher;
-mod mode;
-mod recent;
-mod render;
-mod ui;
-mod winit_app;
-
 use clap::Parser;
-use launcher::Launcher;
-use mode::{AppsMode, DmenuMode, FilesMode, Mode, RunMode};
+use launchr::{
+    launcher::Launcher,
+    mode::{AppsMode, DmenuMode, FilesMode, Mode, RunMode},
+    winit_app::WinitApp,
+};
 use std::io::{Read, stdin};
-use winit_app::WinitApp;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]

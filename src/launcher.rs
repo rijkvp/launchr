@@ -152,7 +152,7 @@ impl Launcher {
 
                 container(
                     TextBuilder::new(&item_text)
-                        .size(self.config.font_size.normal)
+                        .size(self.config.font.normal_size)
                         .build(),
                 )
                 .bg(if i == self.selected {
@@ -177,11 +177,11 @@ struct Match {
 }
 
 fn build_ui(mode_name: &str, config: &Config, editor: Editor, list: DynamicList) -> DynWidget {
-    let editor = TextEditor::new(editor, config.font_size.normal);
+    let editor = TextEditor::new(editor, config.font.normal_size);
     let root = container(column([
         container(
             TextBuilder::new(mode_name)
-                .size(config.font_size.large)
+                .size(config.font.large_size)
                 .bold(true)
                 .build(),
         )

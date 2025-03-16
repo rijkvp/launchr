@@ -2,21 +2,20 @@ use crate::ui::Color;
 
 #[derive(Default)]
 pub struct Config {
-    pub font_size: FontSizeConfig,
+    pub font: FontConfig,
     pub colors: ColorConfig,
 }
 
-
-pub struct FontSizeConfig {
-    pub normal: f32,
-    pub large: f32,
+pub struct FontConfig {
+    pub normal_size: f32,
+    pub large_size: f32,
 }
 
-impl Default for FontSizeConfig {
+impl Default for FontConfig {
     fn default() -> Self {
         Self {
-            normal: 18.0,
-            large: 24.0,
+            normal_size: 18.0,
+            large_size: 24.0,
         }
     }
 }

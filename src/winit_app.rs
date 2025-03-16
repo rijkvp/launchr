@@ -13,6 +13,8 @@ use winit::{
     window::{Window, WindowId, WindowLevel},
 };
 
+const APP_NAME: &str = env!("CARGO_CRATE_NAME");
+
 pub struct WinitApp {
     launcher: Launcher,
     window: AppState,
@@ -69,7 +71,7 @@ impl ApplicationHandler<UserEvent> for WinitApp {
             .with_transparent(true)
             .with_window_level(WindowLevel::AlwaysOnTop)
             .with_inner_size(PhysicalSize::new(1300, 700))
-            .with_name("launcher", "launcher");
+            .with_name(APP_NAME, APP_NAME);
         let window = Arc::new(event_loop.create_window(attributes).unwrap());
         self.window = AppState::Running {
             window: window.clone(),

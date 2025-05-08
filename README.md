@@ -2,6 +2,8 @@
 
 Application launcher, file search and dmenu replacement for Linux.
 
+![screenshot](https://github.com/user-attachments/assets/32f0102c-8007-4ddf-b805-006677e1813f)
+
 ## Features
 
 - Application launcher

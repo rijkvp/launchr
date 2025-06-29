@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-anyhow = "1.0.97"
+anyhow = "1.0.98"
 bincode = "2.0.1"
 clap = { version = "4.5", features = ["derive"] }
 cosmic-text = { version = "0.13.2", features = ["shape-run-cache"] }
@@ -23,7 +23,7 @@ winit = "0.30"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
-image = "0.25.5"
+image = "0.25.6"
 
 [[bench]]
 name = "desktop_files"

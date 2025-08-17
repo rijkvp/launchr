@@ -1,11 +1,35 @@
 use crate::ui::Color;
+use anyhow::Result;
+use serde::Deserialize;
+use std::fs;
 
-#[derive(Default)]
+const CONFIG_DIR_NAME: &str = env!("CARGO_CRATE_NAME");
+
+#[derive(Default, Clone, Deserialize)]
+#[serde(default)]
 pub struct Config {
     pub font: FontConfig,
-    pub colors: ColorConfig,
+    pub color: ColorConfig,
 }
 
+impl Config {
+    pub fn load() -> Result<Self> {
+        let config_path = dirs::config_dir()
+            .expect("no config dir")
+            .join(CONFIG_DIR_NAME)
+            .join("config.toml");
+        if config_path.exists() {
+            let text = fs::read_to_string(&config_path)?;
+            Ok(toml::from_str(&text)?)
+        } else {
+            log::info!("no config file found: using default config");
+            Ok(Self::default())
+        }
+    }
+}
+
+#[derive(Clone, Deserialize)]
+#[serde(default)]
 pub struct FontConfig {
     pub normal_size: f32,
     pub large_size: f32,
@@ -20,6 +44,8 @@ impl Default for FontConfig {
     }
 }
 
+#[derive(Clone, Deserialize)]
+#[serde(default)]
 pub struct ColorConfig {
     pub background: Color,
     pub background_second: Color,

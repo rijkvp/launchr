@@ -47,7 +47,7 @@ fn main() {
     match Launcher::load(mode) {
         Ok(launcher) => WinitApp::new(launcher).run(),
         Err(e) => {
-            eprintln!("Failed to load launcher: {e}");
+            eprintln!("Failed to load launcher: {e:?}");
             std::process::exit(1);
         }
     }

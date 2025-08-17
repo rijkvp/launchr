@@ -9,6 +9,7 @@ use crate::{
     },
     winit_app::{EventHandle, UserEvent},
 };
+use anyhow::Context;
 use cosmic_text::Action;
 use winit::{
     event::{ElementState, KeyEvent},
@@ -30,7 +31,7 @@ pub struct Launcher {
 
 impl Launcher {
     pub fn load(mode: Box<dyn Mode>) -> anyhow::Result<Self> {
-        let config = Config::default();
+        let config = Config::load().context("failed to load config")?;
         let editor = Editor::new();
         // note that the item height must be large enough to fit the text
         let list = DynamicList::new(28, 4);
@@ -159,9 +160,9 @@ impl Launcher {
                         .build(),
                 )
                 .bg(if i == self.selected {
-                    self.config.colors.primary
+                    self.config.color.primary
                 } else {
-                    self.config.colors.background
+                    self.config.color.background
                 })
                 .width(Length::Fill)
                 .padding((0, 4)) // must fit within the list item height
@@ -193,14 +194,14 @@ fn build_ui(mode_name: &str, config: &Config, editor: Editor, list: DynamicList)
         container(
             container(editor)
                 .padding((4, 8))
-                .bg(config.colors.background_second),
+                .bg(config.color.background_second),
         )
         .padding((0, 8))
         .into_dyn(),
         list.into_dyn(),
     ]))
     .padding_all(32)
-    .bg(config.colors.background)
+    .bg(config.color.background)
     .width(Length::Fill)
     .height(Length::Fill);
     root.into_dyn()

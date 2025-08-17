@@ -12,7 +12,11 @@ fn fill_rect(buf: &mut [u8], buf_width: u32, buf_height: u32, rect: Rect, color:
         for y in y..y + h {
             for x in x..x + w {
                 let idx = (y * buf_width + x) as usize * 4;
-                buf[idx..idx + 4].copy_from_slice(&color.to_array());
+                let [r, g, b, a] = color.to_array();
+                buf[idx] = b;
+                buf[idx + 1] = g;
+                buf[idx + 2] = r;
+                buf[idx + 3] = a;
             }
         }
     } else {
@@ -33,12 +37,12 @@ fn fill_texture(
     y: u32,
     texture: BorrowedBuffer,
 ) {
-    // The position to start filling the texture
+    // the position to start filling the texture
     let (start_x, start_y) = (x.min(buf_width - 1), y.min(buf_height - 1));
     let (w, h) = (
         texture.width.min(buf_width - start_x),
         texture.height.min(buf_height - start_y),
-    ); // The width/height of the area to fill
+    ); // the width/height of the area to fill
     for y in 0..h {
         for x in 0..w {
             let (self_x, self_y) = (x + start_x, y + start_y);
@@ -49,21 +53,25 @@ fn fill_texture(
     }
 }
 
+// buf: BGRA
+// color: RGBA
 #[inline]
 fn blend_color(buf: &mut [u8], color: Color) {
     let a = 255 - color.alpha();
-    buf[0] = color.red() + scale_u8(buf[0], a);
+    buf[0] = color.blue() + scale_u8(buf[2], a);
     buf[1] = color.green() + scale_u8(buf[1], a);
-    buf[2] = color.blue() + scale_u8(buf[2], a);
+    buf[2] = color.red() + scale_u8(buf[0], a);
     buf[3] = color.alpha() + scale_u8(buf[3], a);
 }
 
+// buf1: BGRA
+// buf2: RGBA
 #[inline]
 fn blend_bufs(buf1: &mut [u8], buf2: &[u8]) {
     let a = 255 - buf2[3];
-    buf1[0] = buf2[0] + scale_u8(buf1[0], a);
+    buf1[0] = buf2[2] + scale_u8(buf1[0], a);
     buf1[1] = buf2[1] + scale_u8(buf1[1], a);
-    buf1[2] = buf2[2] + scale_u8(buf1[2], a);
+    buf1[2] = buf2[0] + scale_u8(buf1[2], a);
     buf1[3] = buf2[3] + scale_u8(buf1[3], a);
 }
 

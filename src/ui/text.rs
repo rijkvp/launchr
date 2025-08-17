@@ -220,7 +220,6 @@ fn convert_image(image: &cosmic_text::SwashImage, color: Color) -> Option<Vec<u8
         return None;
     }
 
-    debug_assert_eq!(image.data.len(), glyph_size);
     let mut buffer = vec![0u8; glyph_size * 4];
 
     match image.content {

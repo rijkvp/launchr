@@ -29,6 +29,7 @@ pub struct RecentItems {
 
 const STATE_DIR_NAME: &str = env!("CARGO_CRATE_NAME");
 const RECENT_FILE_NAME: &str = "recent";
+const MAX_RECENT_ITEMS: usize = 12;
 
 impl RecentItems {
     pub fn load_or_default() -> anyhow::Result<Self> {
@@ -51,6 +52,7 @@ impl RecentItems {
             mode_items.remove(index);
         }
         mode_items.push(RecentItem::new(item));
+        mode_items.drain(..mode_items.len().saturating_sub(MAX_RECENT_ITEMS));
         self.save()
     }
 

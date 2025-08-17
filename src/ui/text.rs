@@ -1,8 +1,8 @@
 use super::{Color, Rect, UVec2, Widget};
 use crate::render::{BorrowedBuffer, DrawHandle};
 use cosmic_text::{
-    Action, Attrs, CacheKeyFlags, Edit, Family, FontSystem, Metrics, Motion, Shaping, Stretch,
-    Style, SwashCache, Weight,
+    Action, Attrs, CacheKeyFlags, Edit, Family, FontFeatures, FontSystem, Metrics, Motion, Shaping,
+    Stretch, Style, SwashCache, Weight,
 };
 use once_cell::sync::Lazy;
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Mutex};
@@ -31,6 +31,8 @@ const DEFAULT_ATTRS: Attrs = Attrs {
     metadata: 0,
     cache_key_flags: CacheKeyFlags::empty(),
     metrics_opt: None,
+    letter_spacing_opt: None,
+    font_features: FontFeatures { features: vec![] },
 };
 
 const DEFAULT_FONT_SIZE: f32 = 18.0;
@@ -105,7 +107,7 @@ impl Text {
         let mut buffer =
             cosmic_text::Buffer::new(&mut font_system, Metrics::new(size, line_height));
         // use advanced shaping to get all font features, like emojis and ligatures
-        buffer.set_text(&mut font_system, text, attrs, Shaping::Advanced);
+        buffer.set_text(&mut font_system, text, &attrs, Shaping::Advanced);
         buffer.shape_until_scroll(&mut font_system, false);
 
         let (width, height) = buffer.size();
@@ -277,7 +279,7 @@ impl Editor {
         );
         let mut editor = cosmic_text::Editor::new(buffer);
         editor.with_buffer_mut(|buf| {
-            buf.set_text(&mut font_system, "", DEFAULT_ATTRS, Shaping::Advanced);
+            buf.set_text(&mut font_system, "", &DEFAULT_ATTRS, Shaping::Advanced);
             // intial text must be set
         });
         Self {

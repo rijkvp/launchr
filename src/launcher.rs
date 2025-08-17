@@ -116,7 +116,10 @@ impl Launcher {
                     is_dirty = true;
                 }
             }
-        } else if event.state == ElementState::Released && (event.physical_key == PhysicalKey::Code(KeyCode::ControlLeft) || event.physical_key == PhysicalKey::Code(KeyCode::ControlRight)) {
+        } else if event.state == ElementState::Released
+            && (event.physical_key == PhysicalKey::Code(KeyCode::ControlLeft)
+                || event.physical_key == PhysicalKey::Code(KeyCode::ControlRight))
+        {
             self.ctrl_pressed = false;
         }
         is_dirty

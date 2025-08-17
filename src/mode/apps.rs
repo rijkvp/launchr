@@ -1,30 +1,44 @@
-use super::SimpleMode;
+use super::Mode;
 use crate::item::{Action, Exec};
+use crate::winit_app::EventHandle;
 use crate::{file_finder, item::Item};
 use rayon::prelude::*;
 use std::collections::HashSet;
 use std::io::BufRead;
+use std::sync::{Arc, Mutex};
+use std::thread;
 use std::{ffi::OsStr, fs::File, io::BufReader, path::Path, time::Instant};
 
 pub struct AppsMode {
-    options: Vec<Item>,
+    options: Arc<Mutex<Vec<Item>>>,
 }
 
 impl AppsMode {
     pub fn load() -> Self {
         Self {
-            options: load_desktop_files(),
+            options: Arc::new(Mutex::new(Vec::new())),
         }
     }
 }
 
-impl SimpleMode for AppsMode {
+impl Mode for AppsMode {
     fn name(&self) -> &str {
-        "Applications"
+        "Apps"
     }
 
-    fn get_items(&mut self) -> &Vec<Item> {
-        &self.options
+    fn run(&mut self, event_handle: EventHandle) {
+        let options = self.options.clone();
+        thread::spawn(move || {
+            let items = load_desktop_files();
+            event_handle.send_update();
+            let mut options_mut = options.lock().unwrap();
+            *options_mut = items;
+        });
+    }
+
+    fn update(&mut self, input: &str) -> Vec<Item> {
+        let items = self.options.lock().unwrap().clone();
+        super::fuzzy_match(input, &items)
     }
 }
 

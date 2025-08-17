@@ -4,10 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-anyhow = "1.0.98"
+anyhow = "1.0.99"
 bincode = "2.0.1"
 clap = { version = "4.5", features = ["derive"] }
-cosmic-text = { version = "0.13.2", features = ["shape-run-cache"] }
+cosmic-text = { version = "0.14.2", features = ["shape-run-cache"] }
 crossbeam-channel = "0.5"
 dirs = "6.0"
 ignore = "0.4"
@@ -16,13 +16,13 @@ nucleo = "0.5.0"
 once_cell = "1.21"
 open = "5.3"
 pretty_env_logger = "0.5"
-rayon = "1.10"
+rayon = "1.11"
 softbuffer = "0.4"
 walkdir = "2.5"
 winit = "0.30"
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.7", features = ["html_reports"] }
 image = "0.25.6"
 
 [[bench]]

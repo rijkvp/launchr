@@ -40,7 +40,7 @@ pub struct EventHandle {
 impl EventHandle {
     pub fn send_update(&self) {
         if let Err(e) = self.proxy.send_event(UserEvent::Update) {
-            log::error!("failed to send update event: {}", e);
+            log::error!("failed to send update event: {e}");
         }
     }
 }

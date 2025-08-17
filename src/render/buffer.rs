@@ -8,15 +8,32 @@ fn fill_rect(buf: &mut [u8], buf_width: u32, buf_height: u32, rect: Rect, color:
     let Rect { pos, size } = rect;
     let (x, y) = (pos.x.min(buf_width), pos.y.min(buf_height));
     let (w, h) = (size.x.min(buf_width - x), size.y.min(buf_height - y));
+
     if color.alpha() == 255 {
-        for y in y..y + h {
-            for x in x..x + w {
+        // fast overwrite method if color is opaque
+        let [r, g, b, a] = color.to_array();
+        let pixel = [b, g, r, a]; // BGRA format
+
+        if w == 1 {
+            // if width is 1, fill pixel-by-pixel
+            for y in y..y + h {
                 let idx = (y * buf_width + x) as usize * 4;
-                let [r, g, b, a] = color.to_array();
-                buf[idx] = b;
-                buf[idx + 1] = g;
-                buf[idx + 2] = r;
-                buf[idx + 3] = a;
+                buf[idx..idx + 4].copy_from_slice(&pixel);
+            }
+        } else {
+            // fill first row
+            let first_row_start = (y * buf_width + x) as usize * 4;
+            for i in 0..w as usize {
+                let idx = first_row_start + i * 4;
+                buf[idx..idx + 4].copy_from_slice(&pixel);
+            }
+
+            // copy first row to subsequent rows
+            let row_bytes = (w * 4) as usize;
+            for row in 1..h {
+                let src_start = first_row_start;
+                let dst_start = ((y + row) * buf_width + x) as usize * 4;
+                buf.copy_within(src_start..src_start + row_bytes, dst_start);
             }
         }
     } else {
@@ -43,12 +60,35 @@ fn fill_texture(
         texture.width.min(buf_width - start_x),
         texture.height.min(buf_height - start_y),
     ); // the width/height of the area to fill
-    for y in 0..h {
-        for x in 0..w {
-            let (self_x, self_y) = (x + start_x, y + start_y);
-            let idx = (self_y * buf_width + self_x) as usize * 4;
-            let other_idx = (y * texture.width + x) as usize * 4;
-            blend_bufs(&mut buf[idx..], &texture.buffer[other_idx..])
+
+    let is_opaque = texture.buffer.chunks_exact(4).all(|pixel| pixel[3] == 255);
+
+    if is_opaque {
+        // fast overwrite method if texture is fully opaque
+        for y in 0..h {
+            let buf_row_start = ((y + start_y) * buf_width + start_x) as usize * 4;
+            let texture_row_start = (y * texture.width) as usize * 4;
+
+            for x in 0..w {
+                let buf_idx = buf_row_start + (x as usize * 4);
+                let texture_idx = texture_row_start + (x as usize * 4);
+                buf[buf_idx] = texture.buffer[texture_idx + 2]; // B
+                buf[buf_idx + 1] = texture.buffer[texture_idx + 1]; // G
+                buf[buf_idx + 2] = texture.buffer[texture_idx]; // R
+                buf[buf_idx + 3] = texture.buffer[texture_idx + 3]; // A
+            }
+        }
+    } else {
+        // alpha blend pixel-by-pixel
+        for y in 0..h {
+            let buf_row_start = ((y + start_y) * buf_width + start_x) as usize * 4;
+            let texture_row_start = (y * texture.width) as usize * 4;
+
+            for x in 0..w {
+                let buf_idx = buf_row_start + (x as usize * 4);
+                let texture_idx = texture_row_start + (x as usize * 4);
+                blend_bufs(&mut buf[buf_idx..], &texture.buffer[texture_idx..]);
+            }
         }
     }
 }

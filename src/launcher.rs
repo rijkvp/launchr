@@ -4,8 +4,8 @@ use crate::{
     mode::Mode,
     recent::RecentItems,
     ui::{
-        DynWidget, DynamicList, Editor, Length, TextBuilder, TextEditor, UVec2, Widget, column,
-        container,
+        column, container, DynWidget, DynamicList, Editor, Length, TextBuilder, TextEditor, UVec2,
+        Widget,
     },
     winit_app::EventHandle,
 };
@@ -122,7 +122,6 @@ impl Launcher {
     }
 
     pub fn update(&mut self) {
-        log::info!("[UPDATE METHOD]");
         let input = self.editor.text();
         self.matches.clear();
         if input.is_empty() {

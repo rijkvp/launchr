@@ -1,7 +1,7 @@
 use super::SimpleMode;
 use crate::{
     file_finder,
-    item::{Action, Exec, Item},
+    item::{Action, Item},
 };
 
 pub struct RunMode {
@@ -21,10 +21,9 @@ impl RunMode {
                 Item::new(
                     path.file_name().unwrap().to_string_lossy().to_string(),
                     Action::Exec {
-                        exec: Exec {
-                            program: path.to_string_lossy().to_string(),
-                            args: Vec::new(),
-                        },
+                        program: path.to_string_lossy().to_string(),
+                        args: Vec::new(),
+                        terminal: false,
                     },
                 )
             })

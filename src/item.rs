@@ -15,8 +15,15 @@ pub struct Item {
 #[derive(Debug, Clone, Encode, Decode, PartialEq, Eq)]
 pub enum Action {
     Selection,
-    Exec { exec: Exec },
-    File { path: PathBuf, is_dir: bool },
+    Exec {
+        program: String,
+        args: Vec<String>,
+        terminal: bool,
+    },
+    File {
+        path: PathBuf,
+        is_dir: bool,
+    },
 }
 
 impl AsRef<str> for Item {
@@ -29,12 +36,12 @@ impl Display for Item {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match &self.action {
             Action::Selection => write!(f, "{}", self.text),
-            Action::Exec { exec } => write!(
+            Action::Exec { program, args, .. } => write!(
                 f,
                 "{} ({})",
                 self.text,
-                std::iter::once(exec.program.as_str())
-                    .chain(exec.args.iter().map(String::as_str))
+                std::iter::once(program.as_str())
+                    .chain(args.iter().map(String::as_str))
                     .collect::<Vec<_>>()
                     .join(" "),
             ),
@@ -56,12 +63,28 @@ impl Item {
 
     pub fn exec(&self) {
         match &self.action {
-            Action::Exec { exec } => {
+            Action::Exec {
+                program,
+                args,
+                terminal,
+            } => {
                 // Execute the command as child process
-                let cmd = exec.command();
-                log::info!("executing: '{cmd}'");
-                if let Err(e) = Command::new(&exec.program).args(&exec.args).spawn() {
-                    eprintln!("Failed to run '{cmd}': {e}");
+                if *terminal {
+                    let mut cmd = program.clone();
+                    if !args.is_empty() {
+                        cmd.push(' ');
+                        cmd.push_str(&args.join(" "));
+                    }
+                    log::info!("running command in terminal: {cmd}");
+                    // TODO: Make terminal configurable
+                    if let Err(e) = Command::new("alacritty").args(["-e", &cmd]).spawn() {
+                        eprintln!("Failed to run command in terminal: {e}");
+                    }
+                } else {
+                    log::info!("running program: {program}");
+                    if let Err(e) = Command::new(&program).args(args).spawn() {
+                        eprintln!("Failed to run command': {e}");
+                    }
                 }
             }
             Action::Selection => {
@@ -76,22 +99,5 @@ impl Item {
                 }
             }
         }
-    }
-}
-
-#[derive(Debug, Clone, Encode, Decode, PartialEq, Eq, Hash)]
-pub struct Exec {
-    pub program: String,
-    pub args: Vec<String>,
-}
-
-impl Exec {
-    pub fn command(&self) -> String {
-        let mut cmd = String::from(&self.program);
-        if !self.args.is_empty() {
-            cmd.push(' ');
-            cmd.push_str(&self.args.join(" "));
-        }
-        cmd
     }
 }

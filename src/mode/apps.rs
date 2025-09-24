@@ -1,5 +1,5 @@
 use super::Mode;
-use crate::item::{Action, Exec};
+use crate::item::Action;
 use crate::winit_app::EventHandle;
 use crate::{file_finder, item::Item};
 use rayon::prelude::*;
@@ -81,6 +81,7 @@ pub fn load_desktop_files() -> Vec<Item> {
 fn read_desktop_file(path: &Path) -> Option<DesktopEntry> {
     let mut name_str = None;
     let mut exec_str = None;
+    let mut terminal = false;
 
     let file = File::open(path).ok()?;
     for line in BufReader::new(file).lines() {
@@ -93,36 +94,51 @@ fn read_desktop_file(path: &Path) -> Option<DesktopEntry> {
             match key {
                 "Name" => name_str = Some(value.to_string()),
                 "Exec" => exec_str = Some(value.to_string()),
+                "Terminal" if value == "true" => terminal = true,
                 _ => {}
             }
         }
-        if name_str.is_some() && exec_str.is_some() {
+        // stop early if all possible values are read
+        if name_str.is_some() && exec_str.is_some() && terminal {
             break;
         }
     }
     let name = unescape_string(&name_str?);
     let exec_args = ExecKey::parse(&exec_str?);
-    let exec = exec_args.expand();
+    let (program, args) = exec_args.expand();
 
-    log::debug!("read desktop file: {} -> {:?}", name, exec);
-    Some(DesktopEntry::new(name, exec))
+    Some(DesktopEntry::new(name, program, args, terminal))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct DesktopEntry {
     name: String,
-    exec: Exec,
+    program: String,
+    args: Vec<String>,
+    terminal: bool,
 }
 
 impl DesktopEntry {
-    fn new(name: String, exec: Exec) -> Self {
-        Self { name, exec }
+    fn new(name: String, program: String, args: Vec<String>, terminal: bool) -> Self {
+        Self {
+            name,
+            program,
+            args,
+            terminal,
+        }
     }
 }
 
 impl From<DesktopEntry> for Item {
     fn from(value: DesktopEntry) -> Self {
-        Item::new(value.name, Action::Exec { exec: value.exec })
+        Item::new(
+            value.name,
+            Action::Exec {
+                program: value.program,
+                args: value.args,
+                terminal: value.terminal,
+            },
+        )
     }
 }
 
@@ -141,8 +157,8 @@ impl ExecKey {
     }
 
     /// Expand field codes without data
-    fn expand(self) -> Exec {
-        let parts = self
+    fn expand(self) -> (String, Vec<String>) {
+        let mut parts = self
             .0
             .into_iter()
             .filter_map(|arg| match arg {
@@ -150,10 +166,8 @@ impl ExecKey {
                 _ => None,
             })
             .collect::<Vec<_>>();
-        Exec {
-            program: parts[0].clone(),
-            args: parts[1..].to_vec(),
-        }
+        let args = parts.split_off(1);
+        (parts.pop().unwrap(), args)
     }
 }
 

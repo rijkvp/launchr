@@ -47,7 +47,6 @@ impl Mode for FilesMode {
                 LAST_UPDATE.with_borrow_mut(|last_update| {
                     if last_update.elapsed().as_millis() > 10 {
                         *last_update = Instant::now();
-                        log::info!("SEND UPDATE");
                         event_handle.send_update();
                     }
                 });

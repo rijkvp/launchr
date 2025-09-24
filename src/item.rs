@@ -31,7 +31,7 @@ impl Display for Item {
             Action::Selection => write!(f, "{}", self.text),
             Action::Exec { exec } => write!(
                 f,
-                "[EXEC] {} ({})",
+                "{} ({})",
                 self.text,
                 std::iter::once(exec.program.as_str())
                     .chain(exec.args.iter().map(String::as_str))
@@ -39,12 +39,7 @@ impl Display for Item {
                     .join(" "),
             ),
             Action::File { is_dir, .. } => {
-                write!(
-                    f,
-                    "[{}] {}",
-                    if *is_dir { "DIR " } else { "FILE" },
-                    self.text
-                )
+                write!(f, "{} {}", if *is_dir { 'D' } else { 'F' }, self.text)
             }
         }
     }

@@ -66,8 +66,8 @@ impl TextBuilder {
         self
     }
 
-    pub fn font(mut self, font_name: impl Into<String>) -> Self {
-        self.font_name = Some(font_name.into());
+    pub fn font(mut self, font_name: Option<impl Into<String>>) -> Self {
+        self.font_name = font_name.map(|f| f.into());
         self
     }
 
@@ -263,22 +263,21 @@ pub struct Editor {
     inner: Rc<RefCell<cosmic_text::Editor<'static>>>,
 }
 
-impl Default for Editor {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Editor {
-    pub fn new() -> Self {
+    pub fn new(font_name: Option<String>) -> Self {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
+
+        let mut attrs = DEFAULT_ATTRS;
+        if let Some(font) = &font_name {
+            attrs.family = Family::Name(font)
+        }
         let buffer = cosmic_text::Buffer::new(
             &mut font_system,
             Metrics::new(DEFAULT_FONT_SIZE, DEFAULT_FONT_SIZE),
         );
         let mut editor = cosmic_text::Editor::new(buffer);
         editor.with_buffer_mut(|buf| {
-            buf.set_text(&mut font_system, "", &DEFAULT_ATTRS, Shaping::Advanced);
+            buf.set_text(&mut font_system, "", &attrs, Shaping::Advanced);
             // intial text must be set
         });
         Self {

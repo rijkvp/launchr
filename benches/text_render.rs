@@ -1,8 +1,9 @@
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
 use launchr::{
     render::{DrawHandle, OnwedBuffer},
     ui::*,
 };
+use std::hint::black_box;
 
 const WIDTH: u32 = 1920;
 const HEIGHT: u32 = 1080;
@@ -10,9 +11,14 @@ const HEIGHT: u32 = 1080;
 fn create_ui() -> DynWidget {
     let mut texts = Vec::new();
     texts.push(
-        container(TextBuilder::new(TEXT).font("Noto Sans").size(24.0).build())
-            .width(Length::Fill)
-            .height(Length::Fill),
+        container(
+            TextBuilder::new(TEXT)
+                .font(Some("Noto Sans"))
+                .size(24.0)
+                .build(),
+        )
+        .width(Length::Fill)
+        .height(Length::Fill),
     );
     let mut root = container(column(texts))
         .width(Length::Fill)

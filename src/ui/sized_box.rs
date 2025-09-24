@@ -2,6 +2,8 @@ use crate::render::DrawHandle;
 
 use super::{Color, Length, Rect, UVec2, Widget};
 
+#[allow(dead_code)]
+// NOTE: not used at the moment
 pub struct SizedBox {
     color: Option<Color>,
     width: Length,
@@ -15,6 +17,7 @@ impl Default for SizedBox {
     }
 }
 
+#[allow(dead_code)]
 impl SizedBox {
     pub fn new() -> Self {
         Self {

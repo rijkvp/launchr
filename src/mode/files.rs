@@ -1,11 +1,10 @@
-use nucleo::{Config, Nucleo};
-
 use super::Mode;
 use crate::{
     file_finder::{self, FileResult},
     item::Item,
     winit_app::EventHandle,
 };
+use nucleo::{Config, Nucleo};
 use std::{
     cell::RefCell,
     path::PathBuf,
@@ -48,6 +47,7 @@ impl Mode for FilesMode {
                 LAST_UPDATE.with_borrow_mut(|last_update| {
                     if last_update.elapsed().as_millis() > 10 {
                         *last_update = Instant::now();
+                        log::info!("SEND UPDATE");
                         event_handle.send_update();
                     }
                 });
@@ -71,33 +71,31 @@ impl Mode for FilesMode {
             let (files_tx, files_rx) = mpsc::channel::<FileResult>();
             file_finder::find_all_files(&root, files_tx);
             while let Ok(entry) = files_rx.recv() {
-                {
-                    injector.push(entry.into(), |item, b| {
-                        b[0] = item.as_ref().into();
-                    });
-                }
+                injector.push(entry.into(), |item, b| {
+                    b[0] = item.as_ref().into();
+                });
             }
         });
     }
 
     fn update(&mut self, input: &str) -> Vec<Item> {
         let nucleo = self.nucleo.as_mut().unwrap();
-        let snapshot = nucleo.snapshot();
-        let matches = snapshot
-            .matched_items(..snapshot.matched_item_count().min(64))
-            .map(|item| item.data.clone())
-            .collect();
         if input != self.current_input {
-            self.current_input = input.to_string();
             nucleo.pattern.reparse(
                 0,
                 input,
                 nucleo::pattern::CaseMatching::Ignore,
                 nucleo::pattern::Normalization::Smart,
-                false,
+                self.current_input.starts_with(input),
             );
+            self.current_input = input.to_string();
         }
         nucleo.tick(10);
+        let snapshot = nucleo.snapshot();
+        let matches = snapshot
+            .matched_items(..snapshot.matched_item_count().min(64))
+            .map(|item| item.data.clone())
+            .collect();
         matches
     }
 }

@@ -29,10 +29,7 @@ fn create_ui() -> DynWidget {
         ),
     ];
     for (n, (text, font, line_height)) in items.iter().enumerate() {
-        let mut text_builder = TextBuilder::new(*text).size(56.0);
-        if let Some(font) = font {
-            text_builder = text_builder.font(*font);
-        }
+        let mut text_builder = TextBuilder::new(*text).size(56.0).font(*font);
         if let Some(line_height) = line_height {
             text_builder = text_builder.line_height(*line_height);
         }

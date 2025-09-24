@@ -80,9 +80,9 @@ impl ApplicationHandler<UserEvent> for WinitApp {
         self.launcher.update(); // initial update
     }
 
-    fn user_event(&mut self, _: &ActiveEventLoop, event: UserEvent) {
+    fn user_event(&mut self, _: &ActiveEventLoop, _event: UserEvent) {
         if let AppState::Running { window, .. } = &mut self.window {
-            self.launcher.user_event(event);
+            self.launcher.update();
             window.request_redraw();
         }
     }

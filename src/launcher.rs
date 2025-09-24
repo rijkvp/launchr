@@ -7,7 +7,7 @@ use crate::{
         DynWidget, DynamicList, Editor, Length, TextBuilder, TextEditor, UVec2, Widget, column,
         container,
     },
-    winit_app::{EventHandle, UserEvent},
+    winit_app::EventHandle,
 };
 use anyhow::Context;
 use cosmic_text::Action;
@@ -32,9 +32,9 @@ pub struct Launcher {
 impl Launcher {
     pub fn load(mode: Box<dyn Mode>) -> anyhow::Result<Self> {
         let config = Config::load().context("failed to load config")?;
-        let editor = Editor::new();
-        // note that the item height must be large enough to fit the text
-        let list = DynamicList::new(28, 4);
+        let editor = Editor::new(config.font.font_name.clone());
+        // NOTE: due to limitations of the layout system, the item height must be large enough to fit the text
+        let list = DynamicList::new(32, 4);
         let root = build_ui(mode.name(), &config, editor.clone(), list.clone());
         Ok(Self {
             root,
@@ -60,14 +60,6 @@ impl Launcher {
 
     pub fn resize(&mut self, size: UVec2) {
         self.root.layout(size);
-    }
-
-    pub fn user_event(&mut self, event: UserEvent) {
-        match event {
-            UserEvent::Update => {
-                self.update();
-            }
-        }
     }
 
     pub fn key_input(&mut self, event: KeyEvent) -> bool {
@@ -130,6 +122,7 @@ impl Launcher {
     }
 
     pub fn update(&mut self) {
+        log::info!("[UPDATE METHOD]");
         let input = self.editor.text();
         self.matches.clear();
         if input.is_empty() {
@@ -160,6 +153,7 @@ impl Launcher {
                 container(
                     TextBuilder::new(&item_text)
                         .size(self.config.font.normal_size)
+                        .font(self.config.font.font_name.as_ref())
                         .build(),
                 )
                 .bg(if i == self.selected {
@@ -168,7 +162,7 @@ impl Launcher {
                     self.config.color.background
                 })
                 .width(Length::Fill)
-                .padding((0, 4)) // must fit within the list item height
+                .padding((4, 8)) // must fit within the list item height
                 .into_dyn()
             }));
     }
@@ -189,10 +183,11 @@ fn build_ui(mode_name: &str, config: &Config, editor: Editor, list: DynamicList)
         container(
             TextBuilder::new(mode_name)
                 .size(config.font.large_size)
+                .font(config.font.font_name.as_ref())
                 .bold(true)
                 .build(),
         )
-        .padding((0, 8))
+        .padding((0, 4))
         .into_dyn(),
         container(
             container(editor)

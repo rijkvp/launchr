@@ -33,6 +33,7 @@ impl Config {
 pub struct FontConfig {
     pub normal_size: f32,
     pub large_size: f32,
+    pub font_name: Option<String>,
 }
 
 impl Default for FontConfig {
@@ -40,6 +41,7 @@ impl Default for FontConfig {
         Self {
             normal_size: 18.0,
             large_size: 24.0,
+            font_name: None,
         }
     }
 }

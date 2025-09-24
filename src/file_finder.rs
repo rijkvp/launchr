@@ -14,23 +14,25 @@ use walkdir::WalkDir;
 
 use crate::item::{Action, Item};
 
-pub fn find_files_from_env<F: Fn(&Path) -> bool + Sync>(env_var: &str, filter: &F) -> Vec<PathBuf> {
-    get_dirs(env_var)
-        .into_par_iter()
+pub fn find_files_from_dirs<F: Fn(&Path) -> bool + Sync>(
+    dirs: &[PathBuf],
+    filter: &F,
+) -> Vec<PathBuf> {
+    dirs.into_par_iter()
         .flat_map(|dir| get_files(dir, filter))
         .collect::<HashSet<PathBuf>>() // Not very clean, but it prevents duplicates
         .into_iter()
         .collect()
 }
 
-fn get_dirs(env_var: &str) -> Vec<PathBuf> {
+pub fn get_dirs_from_env(env_var: &str) -> Vec<PathBuf> {
     if let Ok(path) = env::var(env_var) {
         return path.split(':').map(PathBuf::from).collect();
     }
     vec![]
 }
 
-fn get_files<F>(dir: PathBuf, filter: F) -> Vec<PathBuf>
+fn get_files<F>(dir: &Path, filter: F) -> Vec<PathBuf>
 where
     F: Fn(&Path) -> bool,
 {

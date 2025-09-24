@@ -12,20 +12,23 @@ impl RunMode {
     pub fn load() -> Self {
         // TODO: Filter on executable files
         Self {
-            executables: file_finder::find_files_from_env("PATH", &|_| true)
-                .into_iter()
-                .map(|path| {
-                    Item::new(
-                        path.file_name().unwrap().to_string_lossy().to_string(),
-                        Action::Exec {
-                            exec: Exec {
-                                program: path.to_string_lossy().to_string(),
-                                args: Vec::new(),
-                            },
+            executables: file_finder::find_files_from_dirs(
+                &file_finder::get_dirs_from_env("PATH"),
+                &|_| true,
+            )
+            .into_iter()
+            .map(|path| {
+                Item::new(
+                    path.file_name().unwrap().to_string_lossy().to_string(),
+                    Action::Exec {
+                        exec: Exec {
+                            program: path.to_string_lossy().to_string(),
+                            args: Vec::new(),
                         },
-                    )
-                })
-                .collect(),
+                    },
+                )
+            })
+            .collect(),
         }
     }
 }

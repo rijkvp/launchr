@@ -77,15 +77,18 @@ impl Launcher {
                 self.close_requested = true;
             } else if event.physical_key == PhysicalKey::Code(KeyCode::Enter) {
                 is_dirty = true;
-                self.close_requested = true;
+                // holding CTRL keeps the launchr open
+                if !self.ctrl_pressed {
+                    self.close_requested = true;
+                }
                 if let Err(e) = self
                     .recent
                     .add_and_save(self.mode.name(), self.matches[self.selected].item.clone())
                 {
                     log::error!("Failed to save recent items: {e}");
                 }
-                // Execute the selected match, swap remove so we can move it
-                self.matches.swap_remove(self.selected).item.exec();
+                // Execute the selected match
+                self.matches[self.selected].item.exec();
             } else if event.physical_key == PhysicalKey::Code(KeyCode::ArrowDown)
                 || self.ctrl_pressed && event.physical_key == PhysicalKey::Code(KeyCode::KeyJ)
             {

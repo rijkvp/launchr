@@ -44,7 +44,14 @@ impl Mode for AppsMode {
 
 pub fn load_desktop_files() -> Vec<Item> {
     let mut timer = Instant::now();
-    let desktop_files = file_finder::find_files_from_env("XDG_DATA_DIRS", &|path| {
+    let mut dirs = file_finder::get_dirs_from_env("XDG_DATA_DIRS");
+    if let Some(desktop_dir) = dirs::desktop_dir() {
+        dirs.push(desktop_dir);
+    }
+    if let Some(data_dir) = dirs::data_dir() {
+        dirs.push(data_dir.join("applications"));
+    }
+    let desktop_files = file_finder::find_files_from_dirs(&dirs, &|path| {
         Some(OsStr::new("desktop")) == path.extension()
     });
     log::info!(

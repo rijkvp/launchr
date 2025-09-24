@@ -59,8 +59,8 @@ impl Item {
         Self::new(text, Action::Selection)
     }
 
-    pub fn exec(self) {
-        match self.action {
+    pub fn exec(&self) {
+        match &self.action {
             Action::Exec { exec } => {
                 // Execute the command as child process
                 let cmd = exec.command();

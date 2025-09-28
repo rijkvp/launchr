@@ -2,7 +2,6 @@ use ignore::{WalkBuilder, WalkState};
 use rayon::prelude::*;
 use std::{
     collections::HashSet,
-    env,
     path::{Path, PathBuf},
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -23,13 +22,6 @@ pub fn find_files_from_dirs<F: Fn(&Path) -> bool + Sync>(
         .collect::<HashSet<PathBuf>>() // Not very clean, but it prevents duplicates
         .into_iter()
         .collect()
-}
-
-pub fn get_dirs_from_env(env_var: &str) -> Vec<PathBuf> {
-    if let Ok(path) = env::var(env_var) {
-        return path.split(':').map(PathBuf::from).collect();
-    }
-    vec![]
 }
 
 fn get_files<F>(dir: &Path, filter: F) -> Vec<PathBuf>

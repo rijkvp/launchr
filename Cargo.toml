@@ -29,10 +29,6 @@ image = "0.25.8"
 serde_json = "1.0"
 
 [[bench]]
-name = "desktop_files"
-harness = false
-
-[[bench]]
 name = "text_render"
 harness = false
 

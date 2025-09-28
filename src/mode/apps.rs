@@ -2,11 +2,13 @@ use super::Mode;
 use crate::item::Action;
 use crate::winit_app::EventHandle;
 use crate::{file_finder, item::Item};
+use anyhow::{Context, Result};
 use rayon::prelude::*;
 use std::collections::HashSet;
 use std::io::BufRead;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use std::thread;
+use std::{env, thread};
 use std::{ffi::OsStr, fs::File, io::BufReader, path::Path, time::Instant};
 
 pub struct AppsMode {
@@ -44,14 +46,28 @@ impl Mode for AppsMode {
 
 pub fn load_desktop_files() -> Vec<Item> {
     let mut timer = Instant::now();
-    let mut dirs = file_finder::get_dirs_from_env("XDG_DATA_DIRS");
+
+    // Get desktop files from:
+    // 1. $XDG_DESKTOP (desktop directory)
+    // 2. $XDG_DATA_HOME/applications
+    // 3. $XDG_DATA_DIRS/applications
+    let mut app_dirs = Vec::new();
     if let Some(desktop_dir) = dirs::desktop_dir() {
-        dirs.push(desktop_dir);
+        app_dirs.push(desktop_dir);
     }
     if let Some(data_dir) = dirs::data_dir() {
-        dirs.push(data_dir.join("applications"));
+        app_dirs.push(data_dir.join("applications"));
+    };
+    if let Ok(data_dirs_str) = env::var("XDG_DATA_DIRS") {
+        for path in data_dirs_str
+            .split(':')
+            .map(|dir| PathBuf::from(dir).join("applications"))
+        {
+            app_dirs.push(path);
+        }
     }
-    let desktop_files = file_finder::find_files_from_dirs(&dirs, &|path| {
+
+    let desktop_files = file_finder::find_files_from_dirs(&app_dirs, &|path| {
         Some(OsStr::new("desktop")) == path.extension()
     });
     log::info!(
@@ -63,7 +79,13 @@ pub fn load_desktop_files() -> Vec<Item> {
     timer = Instant::now();
     let entries = desktop_files
         .into_par_iter()
-        .filter_map(|path| read_desktop_file(&path))
+        .filter_map(|path| match read_desktop_file(&path) {
+            Ok(entry) => Some(entry),
+            Err(err) => {
+                log::error!("failed to read desktop file: {err}");
+                None
+            }
+        })
         .collect::<Vec<DesktopEntry>>();
     log::info!(
         "parsed {} desktop files in {:?}",
@@ -78,17 +100,25 @@ pub fn load_desktop_files() -> Vec<Item> {
 }
 
 // Per the Desktop Entry Specification: https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html
-fn read_desktop_file(path: &Path) -> Option<DesktopEntry> {
+fn read_desktop_file(path: &Path) -> Result<DesktopEntry> {
     let mut name_str = None;
     let mut exec_str = None;
     let mut terminal = false;
+    let mut desktop_section = false;
 
-    let file = File::open(path).ok()?;
+    let file = File::open(path)?;
     for line in BufReader::new(file).lines() {
-        let line = line.ok()?;
+        let line = line?;
         let line = line.trim();
         if line.is_empty() || line.starts_with('#') {
             continue;
+        }
+        // For now, only the [Desktop Entry] section is supported
+        // TODO: Support [Desktop Action] entries
+        if line == "[Desktop Entry]" {
+            desktop_section = true;
+        } else if line.starts_with("[") && desktop_section {
+            break;
         }
         if let Some((key, value)) = line.split_once('=').map(|(k, v)| (k.trim(), v.trim())) {
             match key {
@@ -103,11 +133,11 @@ fn read_desktop_file(path: &Path) -> Option<DesktopEntry> {
             break;
         }
     }
-    let name = unescape_string(&name_str?);
-    let exec_args = ExecKey::parse(&exec_str?);
+    let name = unescape_string(&name_str.context("missing required key 'Name'")?);
+    let exec_args = ExecKey::parse(&exec_str.context("missing required key 'Exec'")?);
     let (program, args) = exec_args.expand();
 
-    Some(DesktopEntry::new(name, program, args, terminal))
+    Ok(DesktopEntry::new(name, program, args, terminal))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

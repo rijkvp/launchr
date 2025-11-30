@@ -107,7 +107,7 @@ impl Text {
         let mut buffer =
             cosmic_text::Buffer::new(&mut font_system, Metrics::new(size, line_height));
         // use advanced shaping to get all font features, like emojis and ligatures
-        buffer.set_text(&mut font_system, text, &attrs, Shaping::Advanced);
+        buffer.set_text(&mut font_system, text, &attrs, Shaping::Advanced, None);
         buffer.shape_until_scroll(&mut font_system, false);
 
         let (width, height) = buffer.size();
@@ -277,7 +277,7 @@ impl Editor {
         );
         let mut editor = cosmic_text::Editor::new(buffer);
         editor.with_buffer_mut(|buf| {
-            buf.set_text(&mut font_system, "", &attrs, Shaping::Advanced);
+            buf.set_text(&mut font_system, "", &attrs, Shaping::Advanced, None);
             // intial text must be set
         });
         Self {

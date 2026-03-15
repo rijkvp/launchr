@@ -30,7 +30,7 @@ impl FilesMode {
 }
 
 impl Mode for FilesMode {
-    fn name(&self) -> &str {
+    fn display_name(&self) -> &str {
         "Files"
     }
 
@@ -96,5 +96,9 @@ impl Mode for FilesMode {
             .map(|item| item.data.clone())
             .collect();
         matches
+    }
+
+    fn cache_key(&self) -> Option<&'static str> {
+        Some("files")
     }
 }

@@ -24,7 +24,7 @@ impl AppsMode {
 }
 
 impl Mode for AppsMode {
-    fn name(&self) -> &str {
+    fn display_name(&self) -> &str {
         "Apps"
     }
 
@@ -41,6 +41,10 @@ impl Mode for AppsMode {
     fn update(&mut self, input: &str) -> Vec<Item> {
         let items = self.options.lock().unwrap().clone();
         super::fuzzy_match(input, &items)
+    }
+
+    fn cache_key(&self) -> Option<&'static str> {
+        Some("apps")
     }
 }
 

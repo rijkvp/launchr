@@ -2,7 +2,7 @@ use super::{Color, Rect, UVec2, Widget};
 use crate::render::{BorrowedBuffer, DrawHandle};
 use cosmic_text::{
     Action, Attrs, CacheKeyFlags, Edit, Family, FontFeatures, FontSystem, Metrics, Motion, Shaping,
-    Stretch, Style, SwashCache, Weight,
+    Stretch, Style, SwashCache, Weight, Wrap,
 };
 use once_cell::sync::Lazy;
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Mutex};
@@ -106,6 +106,7 @@ impl Text {
 
         let mut buffer =
             cosmic_text::Buffer::new(&mut font_system, Metrics::new(size, line_height));
+        buffer.set_wrap(&mut font_system, Wrap::None);
         // use advanced shaping to get all font features, like emojis and ligatures
         buffer.set_text(&mut font_system, text, &attrs, Shaping::Advanced, None);
         buffer.shape_until_scroll(&mut font_system, false);

@@ -1361,6 +1361,7 @@ dependencies = [
  "dirs",
  "ignore",
  "image",
+ "indexmap",
  "log",
  "nucleo",
  "once_cell",

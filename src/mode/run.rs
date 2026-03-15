@@ -36,7 +36,7 @@ impl RunMode {
 }
 
 impl SimpleMode for RunMode {
-    fn name(&self) -> &str {
+    fn display_name(&self) -> &str {
         "Run"
     }
 

@@ -4,33 +4,17 @@ use std::{
     collections::BTreeMap,
     fs::{self, File},
     io::Read,
-    time::{Instant, SystemTime, UNIX_EPOCH},
+    time::Instant,
 };
-
-#[derive(Serialize, Deserialize)]
-struct RecentItem {
-    item: Item,
-    time: u64,
-}
-
-impl RecentItem {
-    fn new(item: Item) -> Self {
-        let time = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-        Self { item, time }
-    }
-}
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct RecentItems {
-    items: BTreeMap<String, Vec<RecentItem>>,
+    items: BTreeMap<String, Vec<Item>>,
 }
 
 const STATE_DIR_NAME: &str = env!("CARGO_CRATE_NAME");
 const RECENT_FILE_NAME: &str = "recent";
-const MAX_RECENT_ITEMS: usize = 12;
+const MAX_RECENT_ITEMS: usize = 16;
 
 impl RecentItems {
     pub fn load_or_default() -> anyhow::Result<Self> {
@@ -52,13 +36,13 @@ impl RecentItems {
         Ok(res)
     }
 
-    pub fn add_and_save(&mut self, mode: &str, item: Item) -> anyhow::Result<()> {
-        let mode_items = self.items.entry(mode.to_string()).or_default();
-        if let Some(index) = mode_items.iter().position(|r| r.item == item) {
+    pub fn insert_and_save(&mut self, key: &str, item: Item) -> anyhow::Result<()> {
+        let mode_items = self.items.entry(key.to_string()).or_default();
+        if let Some(index) = mode_items.iter().position(|i| *i == item) {
             mode_items.remove(index);
         }
-        mode_items.push(RecentItem::new(item));
-        mode_items.drain(..mode_items.len().saturating_sub(MAX_RECENT_ITEMS));
+        mode_items.insert(0, item);
+        mode_items.truncate(MAX_RECENT_ITEMS);
         self.save()
     }
 
@@ -71,11 +55,9 @@ impl RecentItems {
         Ok(())
     }
 
-    pub fn get_matches(&self, mode: &str) -> Vec<Item> {
-        if let Some(items) = self.items.get(mode) {
-            let mut matches: Vec<Item> = items.iter().map(|r| r.item.clone()).collect();
-            matches.reverse();
-            matches
+    pub fn get_items(&self, key: &str) -> Vec<Item> {
+        if let Some(items) = self.items.get(key) {
+            items.iter().cloned().collect()
         } else {
             Vec::new()
         }

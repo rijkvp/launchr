@@ -20,7 +20,7 @@ impl DmenuMode {
 }
 
 impl SimpleMode for DmenuMode {
-    fn name(&self) -> &str {
+    fn display_name(&self) -> &str {
         &self.prompt
     }
 

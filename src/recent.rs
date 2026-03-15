@@ -1,12 +1,13 @@
 use crate::item::Item;
-use bincode::{Decode, Encode};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
     fs::{self, File},
+    io::Read,
     time::{Instant, SystemTime, UNIX_EPOCH},
 };
 
-#[derive(Encode, Decode)]
+#[derive(Serialize, Deserialize)]
 struct RecentItem {
     item: Item,
     time: u64,
@@ -22,7 +23,7 @@ impl RecentItem {
     }
 }
 
-#[derive(Default, Encode, Decode)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct RecentItems {
     items: BTreeMap<String, Vec<RecentItem>>,
 }
@@ -41,8 +42,13 @@ impl RecentItems {
             return Ok(Self::default());
         }
         let mut file = File::open(path)?;
-        let res: Self = bincode::decode_from_std_read(&mut file, bincode::config::standard())?;
-        log::info!("loaded recent items in {:?}", start_instant.elapsed());
+        let mut buf = Vec::new();
+        let file_len = file.read_to_end(&mut buf)?;
+        let res = postcard::from_bytes(&buf)?;
+        log::info!(
+            "loaded recent items in {:?} ({file_len} bytes)",
+            start_instant.elapsed()
+        );
         Ok(res)
     }
 
@@ -60,8 +66,8 @@ impl RecentItems {
         let state_dir = dirs::state_dir().unwrap().join(STATE_DIR_NAME);
         fs::create_dir_all(&state_dir)?;
         let file = state_dir.join(RECENT_FILE_NAME);
-        let mut file = File::create(file)?;
-        bincode::encode_into_std_write(self, &mut file, bincode::config::standard())?;
+        let file = File::create(file)?;
+        postcard::to_io(self, file)?;
         Ok(())
     }
 

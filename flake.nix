@@ -35,8 +35,8 @@
             fontconfig
             wayland
             libxkbcommon
-            xorg.libX11
-            xorg.libXcursor
+            libX11
+            libXcursor
           ];
           nativeBuildInputs = with pkgs; [ pkg-config ];
 
@@ -49,8 +49,8 @@
             fontconfig
             wayland
             libxkbcommon
-            xorg.libX11
-            xorg.libXcursor
+            libX11
+            libXcursor
           ];
 
         launchr = craneLib.buildPackage (

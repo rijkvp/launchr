@@ -162,6 +162,7 @@ impl Launcher {
                     TextBuilder::new(&item_text)
                         .size(self.config.font.normal_size)
                         .font(self.config.font.font_name.as_ref())
+                        .bold(i == self.selected)
                         .build(),
                 )
                 .bg(if i == self.selected {
@@ -203,7 +204,7 @@ fn build_ui(mode_name: &str, config: &Config, editor: Editor, list: DynamicList)
     let editor = TextEditor::new(editor, config.font.normal_size);
     let root = container(column([
         container(
-            TextBuilder::new(mode_name)
+            TextBuilder::new(format!("{} (launchr v{})", mode_name, crate::VERSION))
                 .size(config.font.large_size)
                 .font(config.font.font_name.as_ref())
                 .bold(true)

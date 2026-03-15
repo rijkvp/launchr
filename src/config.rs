@@ -40,7 +40,7 @@ impl Default for FontConfig {
     fn default() -> Self {
         Self {
             normal_size: 18.0,
-            large_size: 24.0,
+            large_size: 20.0,
             font_name: None,
         }
     }

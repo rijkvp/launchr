@@ -2,7 +2,7 @@ use super::{Color, Rect, UVec2, Widget};
 use crate::render::{BorrowedBuffer, DrawHandle};
 use cosmic_text::{
     Action, Attrs, CacheKeyFlags, Edit, Family, FontFeatures, FontSystem, Metrics, Motion, Shaping,
-    Stretch, Style, SwashCache, Weight, Wrap,
+    Stretch, Style, SwashCache, TextDecoration, Weight, Wrap,
 };
 use once_cell::sync::Lazy;
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Mutex};
@@ -33,6 +33,7 @@ const DEFAULT_ATTRS: Attrs = Attrs {
     metrics_opt: None,
     letter_spacing_opt: None,
     font_features: FontFeatures { features: vec![] },
+    text_decoration: TextDecoration::new(),
 };
 
 const DEFAULT_FONT_SIZE: f32 = 18.0;
@@ -106,9 +107,9 @@ impl Text {
 
         let mut buffer =
             cosmic_text::Buffer::new(&mut font_system, Metrics::new(size, line_height));
-        buffer.set_wrap(&mut font_system, Wrap::None);
+        buffer.set_wrap(Wrap::None);
         // use advanced shaping to get all font features, like emojis and ligatures
-        buffer.set_text(&mut font_system, text, &attrs, Shaping::Advanced, None);
+        buffer.set_text(text, &attrs, Shaping::Advanced, None);
         buffer.shape_until_scroll(&mut font_system, false);
 
         let (width, height) = buffer.size();
@@ -135,11 +136,8 @@ impl Widget for Text {
         // the buffer is always resized to the bounds so we can determine the wrapped text size
         // afterwards
         if Some(bounds.x) != buf_width || Some(bounds.y) != buf_height {
-            self.buffer.set_size(
-                &mut FONT_SYSTEM.lock().unwrap(),
-                Some(bounds.x as f32),
-                Some(bounds.y as f32),
-            );
+            self.buffer
+                .set_size(Some(bounds.x as f32), Some(bounds.y as f32));
             self.buffer
                 .shape_until_scroll(&mut FONT_SYSTEM.lock().unwrap(), false);
             if self.buffer.layout_runs().count() == 0 {
@@ -278,7 +276,7 @@ impl Editor {
         );
         let mut editor = cosmic_text::Editor::new(buffer);
         editor.with_buffer_mut(|buf| {
-            buf.set_text(&mut font_system, "", &attrs, Shaping::Advanced, None);
+            buf.set_text("", &attrs, Shaping::Advanced, None);
             // intial text must be set
         });
         Self {
@@ -323,10 +321,7 @@ pub struct TextEditor {
 impl TextEditor {
     pub fn new(editor: Editor, font_size: f32) -> Self {
         editor.inner.borrow_mut().with_buffer_mut(|buf| {
-            buf.set_metrics(
-                &mut FONT_SYSTEM.lock().unwrap(),
-                Metrics::new(font_size, font_size),
-            );
+            buf.set_metrics(Metrics::new(font_size, font_size));
         });
         Self {
             editor,
@@ -345,11 +340,7 @@ impl Widget for TextEditor {
             );
             // only relayout if the bounds have changed
             if Some(bounds.x) != buf_width || Some(bounds.y) != buf_height {
-                buf.set_size(
-                    &mut FONT_SYSTEM.lock().unwrap(),
-                    Some(bounds.x as f32),
-                    Some(bounds.y as f32),
-                );
+                buf.set_size(Some(bounds.x as f32), Some(bounds.y as f32));
                 self.width = bounds.x;
                 self.height = bounds.y.min(buf.metrics().line_height as u32);
                 log::debug!("text editor layout: {}x{}", self.width, self.height);
@@ -361,7 +352,7 @@ impl Widget for TextEditor {
     fn render(&self, pos: UVec2, draw_handle: &mut DrawHandle) {
         let mut font_system = FONT_SYSTEM.lock().unwrap();
         let mut swash_cache = SWASH_CACHE.lock().unwrap();
-        let editor = self.editor.inner.borrow_mut();
+        let mut editor = self.editor.inner.borrow_mut();
         if editor.redraw() {
             editor.draw(
                 &mut font_system,

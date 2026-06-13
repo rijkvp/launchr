@@ -3,34 +3,23 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     crane.url = "github:ipetkov/crane";
-    rust-overlay = {
-      url = "github:oxalica/rust-overlay";
-      inputs = {
-        nixpkgs.follows = "nixpkgs";
-      };
-    };
   };
   outputs =
     {
       nixpkgs,
       flake-utils,
       crane,
-      rust-overlay,
       ...
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
       let
-        pkgs = import nixpkgs {
-          inherit system;
-          overlays = [ (import rust-overlay) ];
-        };
-        craneLib = (crane.mkLib pkgs).overrideToolchain (p: p.rust-bin.stable.latest.default.override { });
+        pkgs = nixpkgs.legacyPackages.${system};
+        craneLib = crane.mkLib pkgs;
 
         commonArgs = {
           src = craneLib.cleanCargoSource ./.;
           strictDeps = true;
-
           buildInputs = with pkgs; [
             fontconfig
             wayland
@@ -39,7 +28,6 @@
             libXcursor
           ];
           nativeBuildInputs = with pkgs; [ pkg-config ];
-
           doCheck = false;
         };
 
@@ -71,13 +59,12 @@
         };
 
         devShells.default = craneLib.devShell {
-
           packages = with pkgs; [
-            cargo-flamegraph
             cargo-edit
+            cargo-machete
+            cargo-flamegraph
             gnuplot
           ];
-
           LD_LIBRARY_PATH = rpath;
         };
       }

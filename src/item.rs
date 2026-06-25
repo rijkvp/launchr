@@ -1,10 +1,27 @@
+use serde::{Deserialize, Serialize};
 use std::{
     fmt::{self, Display, Formatter},
+    os::unix::process::CommandExt,
     path::PathBuf,
-    process::Command,
+    process::{Command, Stdio},
 };
 
-use serde::{Deserialize, Serialize};
+/// Spawn a new process and detach it by calling setsid
+fn spawn_detached(program: &str, args: &[String]) -> std::io::Result<()> {
+    let mut command = Command::new(program);
+    command
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    unsafe {
+        command.pre_exec(|| {
+            libc::setsid();
+            Ok(())
+        });
+    }
+    command.spawn().map(|_| ())
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct Item {
@@ -77,12 +94,12 @@ impl Item {
                     }
                     log::info!("running command in terminal: {cmd}");
                     // TODO: Make terminal configurable
-                    if let Err(e) = Command::new("alacritty").args(["-e", &cmd]).spawn() {
+                    if let Err(e) = spawn_detached("alacritty", &["-e".to_string(), cmd]) {
                         eprintln!("Failed to run command in terminal: {e}");
                     }
                 } else {
                     log::info!("running program: {program}");
-                    if let Err(e) = Command::new(&program).args(args).spawn() {
+                    if let Err(e) = spawn_detached(program, args) {
                         eprintln!("Failed to run command': {e}");
                     }
                 }
